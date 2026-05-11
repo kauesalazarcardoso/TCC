@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Açaí Express — Pedido</title>
+  <link rel="stylesheet" href="pedido.css">
+</head>
+<body>
+
+  <header class="header">
+    <h1>Açaí Express</h1>
+    <button class="cart-btn" onclick="toggleCart(true)">
+      🛒 <span id="cart-count">0</span> Itens
+    </button>
+  </header>
+
+  <div class="container">
+    <div class="grid" id="produtos-grid"></div>
+  </div>
+
+  <!-- SIDEBAR CARRINHO -->
+  <div class="sidebar" id="cart-sidebar">
+    <div class="sidebar-header">
+      <h2>Meu Pedido</h2>
+      <button class="close-btn" onclick="toggleCart(false)">&times;</button>
+    </div>
+    <div class="cart-items" id="cart-list"></div>
+    <div class="sidebar-footer">
+      <div class="total-row">
+        <span>Total:</span>
+        <span id="cart-total">R$ 0,00</span>
+      </div>
+      <button class="btn-finalizar" onclick="enviarPedido()">
+        Enviar Pedido para Estabelecimento
+      </button>
+    </div>
+  </div>
+
+  <script src="pedido.js"></script>
+</body>
+</html>
