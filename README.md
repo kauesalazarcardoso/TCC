@@ -49,9 +49,9 @@ O projeto pode ser expandido com integração de pagamentos e sistema de login d
 
 ## 📚 Informações Acadêmicas
 
-Instituto Federal de Educação, Ciência e Tecnologia Rio Grande do Sul Campos Rolante
+Instituto Federal de Educação, Ciência e Tecnologia - Rio Grande do Sul - Campos Rolante
 
-Curso superior em tecnologia Análise e Desenvolvimento de Sistemas
+Curso Superior em Tecnologia Análise e Desenvolvimento de Sistemas
 
 Nome: Kauê Salazar Cardoso
 
