@@ -67,12 +67,12 @@ function updateUI() {
   let total = 0, qtdTotal = 0;
 
   document.getElementById('cart-list').innerHTML = carrinho.map(item => {
-    total     += item.preco * item.qtd;
-    qtdTotal  += item.qtd;
+    total    += item.preco * item.qtd;
+    qtdTotal += item.qtd;
     return `
       <div class="cart-item">
         <h4>${item.nome}</h4>
-        <p style="font-size:0.8rem; color:#666; margin:0">${item.extras.join(', ') || 'Puro'}</p>
+        <p style="font-size:0.8rem;color:#666;margin:0">${item.extras.join(', ') || 'Puro'}</p>
         <div class="cart-controls">
           <span style="font-weight:bold">R$ ${(item.preco * item.qtd).toFixed(2)}</span>
           <div class="qty-box">
@@ -92,11 +92,56 @@ function toggleCart(estado) {
   document.getElementById('cart-sidebar').classList.toggle('active', estado);
 }
 
-function enviarPedido() {
+// ── MODAL ──────────────────────────────────────────────
+function abrirModal() {
   if (carrinho.length === 0) return;
-  carrinho = [];
-  updateUI();
-  toggleCart(false);
+  document.getElementById('modal-erro').textContent = '';
+  document.getElementById('modal-overlay').classList.add('active');
+}
+
+function fecharModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+
+function confirmarPedido() {
+  const nome   = document.getElementById('input-nome').value.trim();
+  const tel    = document.getElementById('input-tel').value.trim();
+  const rua    = document.getElementById('input-rua').value.trim();
+  const numero = document.getElementById('input-numero').value.trim();
+  const bairro = document.getElementById('input-bairro').value.trim();
+  const cidade = 'Rolante';
+  const erro   = document.getElementById('modal-erro');
+
+  if (!nome || !tel || !rua || !numero || !bairro) {
+    erro.textContent = 'Preencha todos os campos para continuar.';
+    return;
+  }
+
+  const end = `${rua}, ${numero} — ${bairro}, ${cidade}`;
+
+  // Calcula total
+  const total = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
+
+  // Monta objeto do pedido
+  const pedido = {
+    id: Date.now(),
+    cliente: { nome, tel, end },
+    itens: carrinho,
+    total,
+    status: 'aguardando',   // aguardando | confirmado | a_caminho | entregue
+    hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  };
+
+  // Salva no localStorage (lista de pedidos)
+  const pedidos = JSON.parse(localStorage.getItem('acai_pedidos') || '[]');
+  pedidos.push(pedido);
+  localStorage.setItem('acai_pedidos', JSON.stringify(pedidos));
+
+  // Guarda o id do pedido atual para o cliente acompanhar
+  localStorage.setItem('acai_pedido_atual', pedido.id);
+
+  // Redireciona para acompanhamento
+  window.location.href = 'acompanhar.html';
 }
 
 document.addEventListener('DOMContentLoaded', renderVitrine);

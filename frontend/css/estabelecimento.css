@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600&display=swap');
+
+:root {
+  --primary: #4b1d8d;
+  --secondary: #8e44ad;
+  --accent: #27ae60;
+  --laranja: #e67e22;
+  --azul: #2980b9;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  margin: 0;
+  background: #f0ebfa;
+  color: #333;
+  min-height: 100vh;
+}
+
+.header {
+  background: var(--primary);
+  color: white;
+  padding: 16px 5%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header h1 {
+  margin: 0;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.4rem;
+}
+
+.btn-limpar {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.85rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+.sem-pedidos {
+  text-align: center;
+  padding: 80px 20px;
+  color: #999;
+}
+
+.sem-pedidos h2 { font-family: 'Baloo 2', cursive; color: var(--primary); }
+
+/* CARD DE PEDIDO */
+.pedido-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  border-left: 6px solid #ddd;
+  transition: border-color 0.3s;
+}
+
+.pedido-card.aguardando { border-left-color: var(--laranja); }
+.pedido-card.confirmado { border-left-color: var(--azul); }
+.pedido-card.a_caminho  { border-left-color: var(--secondary); }
+.pedido-card.entregue   { border-left-color: var(--accent); opacity: 0.7; }
+
+.pedido-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.pedido-topo h2 {
+  margin: 0;
+  font-family: 'Baloo 2', cursive;
+  color: var(--primary);
+  font-size: 1.2rem;
+}
+
+.badge {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: white;
+}
+
+.badge.aguardando { background: var(--laranja); }
+.badge.confirmado { background: var(--azul); }
+.badge.a_caminho  { background: var(--secondary); }
+.badge.entregue   { background: var(--accent); }
+
+.pedido-info {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+
+.pedido-info strong { color: #333; }
+
+.itens-lista {
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.item-row:last-child { border-bottom: none; }
+
+.item-extras { font-size: 0.78rem; color: #aaa; }
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  color: var(--primary);
+  margin-top: 8px;
+}
+
+/* BOTÕES DE AÇÃO */
+.acoes {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-acao {
+  flex: 1;
+  min-width: 140px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-acao:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-acao:disabled { opacity: 0.35; cursor: default; transform: none; }
+
+.btn-confirmar { background: var(--azul);      color: white; }
+.btn-caminho   { background: var(--secondary); color: white; }
+.btn-entregue  { background: var(--accent);    color: white; }

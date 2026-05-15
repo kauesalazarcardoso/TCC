@@ -29,6 +29,25 @@ body {
   z-index: 1000;
 }
 
+.btn-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  font-size: 1.3rem;
+  text-decoration: none;
+  line-height: 1;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-back:hover { background: rgba(255,255,255,0.35); }
+
 .header h1 {
   font-family: 'Baloo 2', cursive;
   margin: 0;
@@ -215,3 +234,166 @@ body {
 }
 
 @media (max-width: 450px) { .sidebar { width: 100%; } }
+
+/* ===================== MODAL ===================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.modal {
+  background: white;
+  border-radius: 20px;
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  transform: translateY(20px);
+  transition: transform 0.3s;
+}
+
+.modal-overlay.active .modal {
+  transform: translateY(0);
+}
+
+.modal h2 {
+  margin: 0 0 2px;
+  font-family: 'Baloo 2', cursive;
+  color: var(--primary);
+  font-size: 1.6rem;
+}
+
+.modal-sub {
+  margin: 0 0 12px;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.modal label {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #444;
+  margin-top: 6px;
+}
+
+.modal input {
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 1rem;
+  font-family: 'Nunito', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.modal input:focus {
+  border-color: var(--secondary);
+}
+
+.modal-erro {
+  color: #e74c3c;
+  font-size: 0.85rem;
+  min-height: 18px;
+}
+
+.btn-cancelar {
+  width: 100%;
+  background: none;
+  border: 1.5px solid #ddd;
+  padding: 13px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  color: #666;
+  transition: background 0.2s;
+}
+
+.btn-cancelar:hover { background: #f5f5f5; }
+
+/* ===================== FOOTER ===================== */
+.footer {
+  background: #1a0a33;
+  color: rgba(255,255,255,0.85);
+  padding: 60px 60px 0;
+}
+
+.footer-inner {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.footer-logo {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.5rem;
+  color: white;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.footer-brand p {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.footer-links h4,
+.footer-contato h4 {
+  font-family: 'Baloo 2', cursive;
+  color: #a020f0;
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.footer-links a {
+  display: block;
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: #ff00cc; }
+
+.footer-contato p {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding: 20px 0;
+  font-size: 0.82rem;
+  opacity: 0.45;
+}
+
+@media (max-width: 768px) {
+  .footer        { padding: 40px 24px 0; }
+  .footer-inner  { grid-template-columns: 1fr; gap: 28px; }
+}

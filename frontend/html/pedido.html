@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Açaí Express — Pedido</title>
-  <link rel="stylesheet" href="pedido.css">
+  <link rel="stylesheet" href="../css/pedido.css">
 </head>
 <body>
-
   <header class="header">
+    <a class="btn-back" href="index.html">&#8592;</a>
     <h1>Açaí Express</h1>
     <button class="cart-btn" onclick="toggleCart(true)">
       🛒 <span id="cart-count">0</span> Itens
@@ -19,7 +19,6 @@
     <div class="grid" id="produtos-grid"></div>
   </div>
 
-  <!-- SIDEBAR CARRINHO -->
   <div class="sidebar" id="cart-sidebar">
     <div class="sidebar-header">
       <h2>Meu Pedido</h2>
@@ -31,12 +30,57 @@
         <span>Total:</span>
         <span id="cart-total">R$ 0,00</span>
       </div>
-      <button class="btn-finalizar" onclick="enviarPedido()">
-        Enviar Pedido para Estabelecimento
-      </button>
+      <button class="btn-finalizar" onclick="abrirModal()">Finalizar Pedido</button>
     </div>
   </div>
 
-  <script src="pedido.js"></script>
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <h2>Seus Dados</h2>
+      <p class="modal-sub">Preencha para confirmar o pedido</p>
+      <label>Nome completo</label>
+      <input type="text" id="input-nome" placeholder="Ex: João Silva">
+      <label>Telefone</label>
+      <input type="tel" id="input-tel" placeholder="Ex: (51) 99999-9999">
+      <label>Rua</label>
+      <input type="text" id="input-rua" placeholder="Ex: Rua das Flores">
+      <label>Número</label>
+      <input type="text" id="input-numero" placeholder="Ex: 123">
+      <label>Bairro</label>
+      <input type="text" id="input-bairro" placeholder="Ex: Centro">
+      <label>Cidade</label>
+      <input type="text" id="input-cidade" value="Rolante" readonly style="background:#f0f0f0;cursor:not-allowed;color:#888;">
+      <div id="modal-erro" class="modal-erro"></div>
+      <button class="btn-finalizar" onclick="confirmarPedido()">Enviar Pedido →</button>
+      <button class="btn-cancelar" onclick="fecharModal()">Voltar</button>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="footer-logo"> Açaí Express</span>
+        <p>A energia do açaí, na velocidade que você merece!</p>
+      </div>
+      <div class="footer-links">
+        <h4>Navegação</h4>
+        <a href="index.html">Início</a>
+        <a href="pedido.html">Fazer Pedido</a>
+        <a href="acompanhar.html">Acompanhar Pedido</a>
+        <a href="estabelecimento.html">Painel do Estabelecimento</a>
+      </div>
+      <div class="footer-contato">
+        <h4>Contato</h4>
+        <p>📞 (51) 99999-9999</p>
+        <p>📍 Rolante, RS</p>
+        <p>⏰ Seg–Dom: 10h às 22h</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Açaí Express. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="../js/pedido.js"></script>
 </body>
 </html>
