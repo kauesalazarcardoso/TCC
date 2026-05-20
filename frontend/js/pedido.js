@@ -20,15 +20,40 @@ const complementos = [
 
 let carrinho = [];
 
+const MAX_ACOMPANHAMENTOS = 4;
+
+function limitarAcompanhamentos(produtoId) {
+  const checkboxes = document.querySelectorAll(`.check-${produtoId}`);
+  const marcados = Array.from(checkboxes).filter(c => c.checked).length;
+
+  checkboxes.forEach(c => {
+    if (!c.checked) {
+      c.disabled = marcados >= MAX_ACOMPANHAMENTOS;
+    }
+  });
+
+  // Atualiza o contador visual
+  const contador = document.getElementById(`contador-${produtoId}`);
+  if (contador) {
+    contador.textContent = `${marcados}/${MAX_ACOMPANHAMENTOS} acompanhamentos`;
+    contador.style.color = marcados >= MAX_ACOMPANHAMENTOS ? '#e74c3c' : '#888';
+  }
+}
+
 function renderVitrine() {
   document.getElementById('produtos-grid').innerHTML = produtos.map(p => `
     <div class="card">
       <h3>${p.nome}</h3>
       <span class="preco">R$ ${p.preco.toFixed(2)}</span>
+      <div style="font-size:0.78rem;color:#888;margin-bottom:6px">
+        Escolha até ${MAX_ACOMPANHAMENTOS} acompanhamentos:
+        <span id="contador-${p.id}" style="font-weight:bold;margin-left:4px">0/${MAX_ACOMPANHAMENTOS} acompanhamentos</span>
+      </div>
       <div class="opcoes-container">
         ${complementos.map(comp =>
           `<label class="opcao-item">
-             <input type="checkbox" class="check-${p.id}" value="${comp}"> ${comp}
+             <input type="checkbox" class="check-${p.id}" value="${comp}"
+               onchange="limitarAcompanhamentos(${p.id})"> ${comp}
            </label>`
         ).join('')}
       </div>
@@ -49,7 +74,8 @@ function addToCart(id) {
     carrinho.push({ key: itemKey, nome: prod.nome, preco: prod.preco, extras: selected, qtd: 1 });
   }
 
-  document.querySelectorAll(`.check-${id}`).forEach(c => c.checked = false);
+  document.querySelectorAll(`.check-${id}`).forEach(c => { c.checked = false; c.disabled = false; });
+  limitarAcompanhamentos(id);
   updateUI();
   toggleCart(true);
 }
