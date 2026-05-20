@@ -1,29 +1,30 @@
-from flask import Flask, jsonify
-import psycopg2
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app) 
 
-def conectar():
-    return psycopg2.connect(
-        host="db",
-        database="acai",
-        user="postgres",
-        password="postgres"
-    )
+pedidos = []  
 
-@app.route("/")
-def home():
-    return "Backend funcionando 🍧"
+@app.route("/pedidos", methods=["GET"])
+def listar_pedidos():
+    return jsonify(pedidos)
 
-@app.route("/produtos")
-def produtos():
-    conn = conectar()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM produtos;")
-    dados = cur.fetchall()
-    cur.close()
-    conn.close()
+# Criar novo pedido
+@app.route("/pedidos", methods=["POST"])
+def criar_pedido():
+    pedido = request.json
+    pedidos.append(pedido)
+    return jsonify(pedido), 201
 
-    return jsonify(dados)
+# Atualizar status do pedido
+@app.route("/pedidos/<int:pedido_id>", methods=["PATCH"])
+def atualizar_status(pedido_id):
+    pedido = next((p for p in pedidos if p["id"] == pedido_id), None)
+    if not pedido:
+        return jsonify({"erro": "Pedido não encontrado"}), 404
+    pedido["status"] = request.json["status"]
+    return jsonify(pedido)
 
-app.run(host="0.0.0.0", port=5000)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0")
