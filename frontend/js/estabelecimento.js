@@ -1,3 +1,6 @@
+
+const API = 'http://localhost:5000';
+
 const ORDEM  = ['aguardando', 'confirmado', 'a_caminho', 'entregue'];
 const LABELS = {
   aguardando: '🕐 Aguardando',
@@ -6,35 +9,59 @@ const LABELS = {
   entregue:   '🎉 Entregue',
 };
 
-function getPedidos() {
-  return JSON.parse(localStorage.getItem('acai_pedidos') || '[]');
+// ── BUSCA TODOS OS PEDIDOS ────────────────────────────────────
+async function fetchPedidos() {
+  try {
+    const res = await fetch(`${API}/pedidos`);
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    return await res.json();   // espera array de pedidos
+  } catch (e) {
+    console.error('Erro ao buscar pedidos:', e);
+    return null;
+  }
 }
 
-function salvarPedidos(pedidos) {
-  localStorage.setItem('acai_pedidos', JSON.stringify(pedidos));
+// ── AVANÇA STATUS ─────────────────────────────────────────────
+async function avancarStatus(id) {
+  try {
+    const res = await fetch(`${API}/pedidos/${id}/status`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    render();
+  } catch (e) {
+    console.error('Erro ao avançar status:', e);
+    alert('Não foi possível atualizar o status. Tente novamente.');
+  }
 }
 
-function avancarStatus(id) {
-  const pedidos = getPedidos();
-  const p       = pedidos.find(x => x.id === id);
-  if (!p) return;
-
-  const idx = ORDEM.indexOf(p.status);
-  if (idx < ORDEM.length - 1) p.status = ORDEM[idx + 1];
-
-  salvarPedidos(pedidos);
-  render();
+// ── LIMPAR ENTREGUES ──────────────────────────────────────────
+async function limparEntregues() {
+  try {
+    const res = await fetch(`${API}/pedidos/entregues`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    render();
+  } catch (e) {
+    console.error('Erro ao limpar entregues:', e);
+    alert('Não foi possível limpar os pedidos entregues.');
+  }
 }
 
-function limparEntregues() {
-  const pedidos = getPedidos().filter(p => p.status !== 'entregue');
-  salvarPedidos(pedidos);
-  render();
-}
-
-function render() {
-  const pedidos = getPedidos();
+// ── RENDERIZAÇÃO ──────────────────────────────────────────────
+async function render() {
+  const pedidos = await fetchPedidos();
   const el      = document.getElementById('lista-pedidos');
+
+  // Erro de conexão com a API
+  if (pedidos === null) {
+    el.innerHTML = `
+      <div class="sem-pedidos">
+        <h2>⚠️ Erro de conexão</h2>
+        <p>Não foi possível conectar ao servidor. Verifique se o Flask está rodando.</p>
+      </div>`;
+    return;
+  }
 
   if (pedidos.length === 0) {
     el.innerHTML = `
@@ -47,20 +74,22 @@ function render() {
 
   // Mais recentes primeiro, entregues por último
   const ordenados = [...pedidos].sort((a, b) => {
-    if (a.status === 'entregue' && b.status !== 'entregue') return 1;
+    if (a.status === 'entregue' && b.status !== 'entregue') return  1;
     if (b.status === 'entregue' && a.status !== 'entregue') return -1;
     return b.id - a.id;
   });
 
   el.innerHTML = ordenados.map(p => {
-    const idx           = ORDEM.indexOf(p.status);
-    const podeAvancar   = idx < ORDEM.length - 1;
+    const idx         = ORDEM.indexOf(p.status);
+    const podeAvancar = idx < ORDEM.length - 1;
 
     const itensHTML = p.itens.map(item => `
       <div class="item-row">
         <div>
           <div>${item.qtd}× ${item.nome}</div>
-          ${item.extras.length ? `<div class="item-extras">${item.extras.join(', ')}</div>` : ''}
+          ${item.extras && item.extras.length
+            ? `<div class="item-extras">${item.extras.join(', ')}</div>`
+            : ''}
         </div>
         <div>R$ ${(item.preco * item.qtd).toFixed(2)}</div>
       </div>`).join('');
@@ -79,10 +108,13 @@ function render() {
       entregue:   'btn-entregue',
     }[p.status];
 
+    // Exibe apenas os últimos 5 dígitos do ID para leitura rápida
+    const idCurto = String(p.id).slice(-5);
+
     return `
       <div class="pedido-card ${p.status}">
         <div class="pedido-topo">
-          <h2>Pedido #${String(p.id).slice(-5)} — ${p.hora}</h2>
+          <h2>Pedido #${idCurto} — ${p.hora}</h2>
           <span class="badge ${p.status}">${LABELS[p.status]}</span>
         </div>
 
@@ -96,7 +128,7 @@ function render() {
           ${itensHTML}
           <div class="total-row">
             <span>Total</span>
-            <span>R$ ${p.total.toFixed(2)}</span>
+            <span>R$ ${Number(p.total).toFixed(2)}</span>
           </div>
         </div>
 
@@ -112,6 +144,6 @@ function render() {
   }).join('');
 }
 
-// Atualiza a cada 3 segundos para pegar novos pedidos
+// Atualiza a cada 5 segundos para pegar novos pedidos
 render();
-setInterval(render, 3000);
+setInterval(render, 5000);
