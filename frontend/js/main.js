@@ -1,4 +1,4 @@
 
 function irParaPagina() {
-  window.location.href = 'pedido.html';
+  window.location.href = '/html/pedido.html';
 }

@@ -158,7 +158,7 @@ async function confirmarPedido() {
     if (!res.ok) throw new Error(`Erro ${res.status}`);
 
     const data = await res.json();
-    window.location.href = `/acompanhar.html?id=${data.id}`;
+    window.location.href = `acompanhar.html?id=${data.id}`;
   
   } catch (e) {
     console.error(e);
