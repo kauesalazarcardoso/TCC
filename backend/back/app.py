@@ -9,7 +9,7 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'pedidos.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'db', 'pedidos.db')
 
 ORDEM_STATUS = ['aguardando', 'confirmado', 'a_caminho', 'entregue']
 

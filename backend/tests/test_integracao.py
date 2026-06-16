@@ -1,26 +1,5 @@
-import sys
-import os
 import json
 import pytest
-
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..")
-    )
-)
-
-from app import app, init_db
-
-
-@pytest.fixture
-def client():
-
-    app.config['TESTING'] = True
-
-    init_db()
-
-    with app.test_client() as client:
-        yield client
 
 
 def test_criar_pedido(client):
@@ -95,11 +74,13 @@ def test_avancar_status(client):
 
     assert data["status"] == "confirmado"
 
+
 def test_limpar_entregues(client):
 
     response = client.delete("/pedidos/entregues")
 
     assert response.status_code == 200
+
 
 def test_buscar_pedido_por_id(client):
 

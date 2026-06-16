@@ -1,24 +1,5 @@
-import sys
-import os
 import json
 import pytest
-
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..")
-    )
-)
-
-from app import app
-
-
-@pytest.fixture
-def client():
-
-    app.config['TESTING'] = True
-
-    with app.test_client() as client:
-        yield client
 
 
 def test_health_check(client):
@@ -49,11 +30,13 @@ def test_pedido_nao_encontrado(client):
 
     assert "erro" in data
 
+
 def test_metodo_invalido(client):
 
     response = client.post("/")
 
     assert response.status_code == 405
+
 
 def test_lista_pedidos_retorna_json(client):
 

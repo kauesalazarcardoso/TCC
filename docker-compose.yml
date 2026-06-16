@@ -7,7 +7,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./backend/data:/app/data
+      - ./db:/db
     restart: unless-stopped
 
   frontend:
