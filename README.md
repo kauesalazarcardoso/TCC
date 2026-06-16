@@ -1,78 +1,148 @@
-#  Sistema Web de Pedidos de Açaí
+# Sistema Web de Pedidos — Açaí Express
 
-## 📌 Descrição
-Sistema web desenvolvido para gerenciamento de pedidos de açaí, voltado a pequenos estabelecimentos. A aplicação substitui atendimentos manuais, proporcionando mais organização, agilidade e redução de erros.
+Sistema web para gerenciamento de pedidos de açaí, desenvolvido para pequenos estabelecimentos. Substitui atendimentos manuais por um fluxo digital com painel separado para cliente e gestor.
 
-## 🎯 Objetivo
-Permitir que clientes realizem pedidos online e que o estabelecimento gerencie produtos, pedidos e informações de forma eficiente.
+---
 
-## ⚙️ Funcionalidades
-- Listagem de produtos disponíveis
-- Montagem de pedidos personalizados
-- Cálculo automático do valor total
-- Registro de pedidos no banco de dados
-- Visualização de pedidos realizados
-- Gerenciamento do cardápio (adicionar, editar e remover produtos)
+## Tecnologias
 
-## 🛠️ Tecnologias e Ferramentas
-- **Linguagens:** Python, HTML, CSS, JavaScript, SQL
-- **Banco de dados:** SQLite
-- **Ferramentas:** Docker, Visual Studio Code, Figma, Lucidchart
+| Camada | Tecnologia |
+|---|---|
+| Frontend | HTML, CSS, JavaScript, Nginx |
+| Backend | Python, Flask, Flask-CORS |
+| Banco de dados | SQLite |
+| Infraestrutura | Docker, Docker Compose |
+| Testes | Pytest |
 
-## 📋 Requisitos
+---
 
-**Funcionais:**
-- Exibir produtos
-- Permitir montagem e edição de pedidos
-- Registrar pedidos no banco de dados
-- Gerenciar produtos e pedidos
+## Arquitetura
 
-**Não funcionais:**
-- Interface simples e intuitiva
-- Compatível com navegadores modernos
-- Boa performance e tempo de resposta
-- Fácil manutenção e organização do código
-
-## 🎨 Interface e Usabilidade
-O sistema possui protótipos de telas (wireframes), incluindo área institucional, sistema de compras, carrinho e gerenciamento de pedidos, com foco em uma interface simples, intuitiva e funcional.
-
-## 🚀 Como Executar
-
-### Pré-requisitos
-- [Docker](https://www.docker.com/) instalado
-
-### Subindo o projeto
-```bash
-docker compose up -d --build
+```
+projetoMultidiciplinar/
+├── frontend/
+│   ├── html/
+│   │   ├── index.html           # Página inicial (cliente)
+│   │   ├── pedido.html          # Montagem de pedido (cliente)
+│   │   ├── acompanhar.html      # Acompanhamento de pedido (cliente)
+│   │   └── estabelecimento.html # Painel do gestor
+│   ├── css/
+│   ├── js/
+│   └── Dockerfile
+├── backend/
+│   ├── back/
+│   │   ├── app.py               # Entrada da aplicação Flask
+│   │   ├── database.py          # Conexão e inicialização do banco
+│   │   └── routes/
+│   │       └── pedidos.py       # Rotas da API
+│   ├── tests/
+│   │   ├── conftest.py
+│   │   ├── test_unit.py
+│   │   └── test_integracao.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── db/                          # Volume do banco SQLite (gerado automaticamente)
+└── docker-compose.yml
 ```
 
-### 🌐 Acessando a Aplicação
+---
 
-| Serviço  | URL                   |
-|----------|-----------------------|
-| Frontend | http://localhost:8080 |
-| Backend  | http://localhost:5000 |
+## Como executar
 
-### 📄 Páginas
+### Pré-requisito
 
-| Página                 | URL                                       |
-|------------------------|-------------------------------------------|
-| Início                 | http://localhost:8080                     |
-| Fazer Pedido           | http://localhost:8080/pedido.html         |
-| Acompanhar Pedido      | http://localhost:8080/acompanhar.html     |
-| Painel Estabelecimento | http://localhost:8080/estabelecimento.html|
+- [Docker](https://www.docker.com/) instalado
 
-### 🛑 Encerrando
+### Subir o projeto
+
+```bash
+docker compose up --build -d
+```
+
+### Encerrar
+
 ```bash
 docker compose down
 ```
 
-## 🔮 Possibilidades Futuras
-O projeto pode ser expandido com integração de pagamentos e sistema de login de usuários.
+---
 
-## 📚 Informações Acadêmicas
+## Acesso
+
+### Cliente
+
+| Página | URL |
+|---|---|
+| Início | http://localhost:8080 |
+| Fazer pedido | http://localhost:8080/html/pedido.html |
+| Acompanhar pedido | http://localhost:8080/html/acompanhar.html |
+
+### Gestor (estabelecimento)
+
+| Página | URL |
+|---|---|
+| Painel de pedidos | http://localhost:8081 |
+
+> As duas interfaces são servidas pelo mesmo container Nginx em portas separadas — o cliente nunca acessa a área do gestor.
+
+---
+
+## API — Backend
+
+Base URL: `http://localhost:5000`
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/` | Health check |
+| GET | `/pedidos` | Lista todos os pedidos |
+| GET | `/pedidos/<id>` | Busca pedido por ID |
+| POST | `/pedidos` | Cria novo pedido |
+| PATCH | `/pedidos/<id>/status` | Avança status do pedido |
+| DELETE | `/pedidos/entregues` | Remove pedidos entregues |
+
+### Fluxo de status
+
+```
+aguardando → confirmado → a_caminho → entregue
+```
+
+### Exemplo de criação de pedido
+
+```bash
+curl -X POST http://localhost:5000/pedidos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cliente": {"nome": "João"},
+    "itens": [{"nome": "Açaí Natural", "quantidade": 1}],
+    "total": 25.0
+  }'
+```
+
+---
+
+## Testes
+
+```bash
+cd backend
+python -m pytest tests/ -v
+```
+
+10 testes cobrindo criação, listagem, busca, avanço de status, remoção e casos de erro. Cada teste roda com banco isolado em memória.
+
+---
+
+## Rebuild após alterações
+
+```bash
+docker compose up --build -d
+```
+
+---
+
+## Informações Acadêmicas
+
 **Instituto Federal de Educação, Ciência e Tecnologia — Rio Grande do Sul — Campus Rolante**  
 Curso Superior em Tecnologia em Análise e Desenvolvimento de Sistemas  
 **Aluno:** Kauê Salazar Cardoso  
 **Disciplina:** Projeto Multidisciplinar  
-**Projeto:** Desenvolvimento de Sistema Web de Pedidos de Açaí
+**Projeto:** Sistema Web de Pedidos de Açaí
