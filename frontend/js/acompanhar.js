@@ -9,36 +9,34 @@ const STEPS = [
 
 const ORDEM = ['aguardando', 'confirmado', 'a_caminho', 'entregue'];
 
-// ← lê o ID direto da URL: acompanhar.html?id=123456
-const params   = new URLSearchParams(window.location.search);
-const pedidoId = params.get('id');
+function getIds() {
+  try { return JSON.parse(localStorage.getItem('pedidoIds') || '[]'); }
+  catch { return []; }
+}
 
-async function fetchPedido() {
-  if (!pedidoId) return null;
-  try {
-    const res = await fetch(`${API}/pedidos/${pedidoId}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    console.error('Erro ao buscar pedido:', e);
-    return null;
+function addId(id) {
+  const ids = getIds();
+  if (!ids.includes(String(id))) {
+    ids.push(String(id));
+    localStorage.setItem('pedidoIds', JSON.stringify(ids));
   }
 }
 
-async function render() {
-  const pedido = await fetchPedido();
-  const el     = document.getElementById('conteudo');
+function removeId(id) {
+  localStorage.setItem('pedidoIds', JSON.stringify(getIds().filter(i => i !== String(id))));
+}
 
-  if (!pedido) {
-    el.innerHTML = `
-      <div class="sem-pedido">
-        <h2>Nenhum pedido encontrado</h2>
-        <p>Faça seu pedido primeiro!</p>
-        <a class="btn-voltar" href="pedido.html">Fazer Pedido</a>
-      </div>`;
-    return;
-  }
+const idFromUrl = new URLSearchParams(window.location.search).get('id');
+if (idFromUrl) addId(idFromUrl);
 
+async function fetchPedido(id) {
+  try {
+    const res = await fetch(`${API}/pedidos/${id}`);
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+
+function cardHTML(pedido) {
   const statusIdx = ORDEM.indexOf(pedido.status);
 
   const stepsHTML = STEPS.map((s, i) => {
@@ -64,10 +62,9 @@ async function render() {
       <div>R$ ${(item.preco * item.qtd).toFixed(2)}</div>
     </div>`).join('');
 
-  el.innerHTML = `
+  return `
     <div class="pedido-card">
-      <h2>Acompanhar Pedido</h2>
-      <div class="pedido-hora">Pedido feito às ${pedido.hora}</div>
+      <h2>Pedido das ${pedido.hora}</h2>
       <div class="dados-cliente">
         <strong>📍 ${pedido.cliente.nome}</strong><br>
         📞 ${pedido.cliente.tel}<br>
@@ -80,10 +77,45 @@ async function render() {
         <span>Total</span>
         <span>R$ ${Number(pedido.total).toFixed(2)}</span>
       </div>
-    </div>
-    <a class="btn-voltar" href="pedido.html">Fazer Novo Pedido</a>`;
+    </div>`;
+}
 
-  if (pedido.status === 'entregue') clearInterval(intervalo);
+async function render() {
+  const el  = document.getElementById('conteudo');
+  const ids = getIds();
+
+  if (ids.length === 0) {
+    el.innerHTML = `
+      <div class="sem-pedido">
+        <h2>Nenhum pedido encontrado</h2>
+        <p>Faça seu pedido primeiro!</p>
+        <a class="btn-voltar" href="pedido.html">Fazer Pedido</a>
+      </div>`;
+    return;
+  }
+
+  const resultados = await Promise.all(ids.map(id => fetchPedido(id).then(p => ({ id, p }))));
+
+  resultados.forEach(({ id, p }) => { if (!p) removeId(id); });
+
+  const pedidos = resultados.map(r => r.p).filter(Boolean);
+
+  if (pedidos.length === 0) {
+    el.innerHTML = `
+      <div class="sem-pedido">
+        <h2>Nenhum pedido encontrado</h2>
+        <p>Faça seu pedido primeiro!</p>
+        <a class="btn-voltar" href="pedido.html">Fazer Pedido</a>
+      </div>`;
+    return;
+  }
+
+  pedidos.forEach(p => { if (p.status === 'entregue') removeId(p.id); });
+
+  el.innerHTML = pedidos.map(cardHTML).join('') +
+    `<a class="btn-voltar" href="pedido.html">Fazer Novo Pedido</a>`;
+
+  if (pedidos.every(p => p.status === 'entregue')) clearInterval(intervalo);
 }
 
 render();

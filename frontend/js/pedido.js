@@ -158,6 +158,9 @@ async function confirmarPedido() {
     if (!res.ok) throw new Error(`Erro ${res.status}`);
 
     const data = await res.json();
+    const ids = JSON.parse(localStorage.getItem('pedidoIds') || '[]');
+    if (!ids.includes(String(data.id))) ids.push(String(data.id));
+    localStorage.setItem('pedidoIds', JSON.stringify(ids));
     window.location.href = `acompanhar.html?id=${data.id}`;
   
   } catch (e) {
@@ -169,4 +172,11 @@ async function confirmarPedido() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', renderVitrine);
+document.addEventListener('DOMContentLoaded', () => {
+  renderVitrine();
+  const ids = JSON.parse(localStorage.getItem('pedidoIds') || '[]');
+  if (ids.length > 0) {
+    const link = document.getElementById('link-acompanhar');
+    if (link) link.href = 'acompanhar.html';
+  }
+});
