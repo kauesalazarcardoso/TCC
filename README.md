@@ -24,8 +24,8 @@ projetoMultidiciplinar/
 │   ├── html/
 │   │   ├── index.html           # Página inicial (cliente)
 │   │   ├── pedido.html          # Montagem de pedido (cliente)
-│   │   ├── acompanhar.html      # Acompanhamento de pedido (cliente)
-│   │   └── estabelecimento.html # Painel do gestor
+│   │   ├── acompanhar.html      # Acompanhamento de pedidos (cliente)
+│   │   └── estabelecimento.html # Painel do gestor (acesso restrito à porta 8081)
 │   ├── css/
 │   ├── js/
 │   └── Dockerfile
@@ -41,7 +41,7 @@ projetoMultidiciplinar/
 │   │   └── test_integracao.py
 │   ├── requirements.txt
 │   └── Dockerfile
-├── db/                          # Volume do banco SQLite (gerado automaticamente)
+├── db/                          # Volume do banco SQLite (gerado automaticamente, não versionado)
 └── docker-compose.yml
 ```
 
@@ -69,21 +69,30 @@ docker compose down
 
 ## Acesso
 
-### Cliente
+### Cliente (porta 8080)
 
 | Página | URL |
 |---|---|
 | Início | http://localhost:8080 |
 | Fazer pedido | http://localhost:8080/html/pedido.html |
-| Acompanhar pedido | http://localhost:8080/html/acompanhar.html |
+| Acompanhar pedidos | http://localhost:8080/html/acompanhar.html |
 
-### Gestor (estabelecimento)
+### Gestor (porta 8081)
 
 | Página | URL |
 |---|---|
 | Painel de pedidos | http://localhost:8081 |
 
-> As duas interfaces são servidas pelo mesmo container Nginx em portas separadas — o cliente nunca acessa a área do gestor.
+> O painel do gestor (`estabelecimento.html`) retorna **403** se acessado pela porta 8080 — clientes não conseguem acessá-lo diretamente. As duas interfaces são servidas pelo mesmo container Nginx em portas separadas.
+
+---
+
+## Funcionalidades do cliente
+
+- Montar pedido com produtos e acompanhamentos
+- Acompanhar **múltiplos pedidos simultâneos** em tempo real (atualização automática a cada 5 segundos)
+- Os pedidos ativos ficam salvos localmente no navegador — o cliente pode fechar e reabrir a página sem perder o acompanhamento
+- Pedidos entregues são removidos automaticamente da lista de acompanhamento
 
 ---
 
@@ -112,9 +121,9 @@ aguardando → confirmado → a_caminho → entregue
 curl -X POST http://localhost:5000/pedidos \
   -H "Content-Type: application/json" \
   -d '{
-    "cliente": {"nome": "João"},
-    "itens": [{"nome": "Açaí Natural", "quantidade": 1}],
-    "total": 25.0
+    "cliente": {"nome": "João", "tel": "51999999999", "end": "Rua das Flores, 10 — Centro, Rolante"},
+    "itens": [{"nome": "Copo 400ml Médio", "preco": 18.0, "extras": ["Granola", "Banana"], "qtd": 1}],
+    "total": 18.0
   }'
 ```
 
