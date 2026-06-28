@@ -1,24 +1,7 @@
 const API = 'http://localhost:5000';
 
-const produtos = [
-  { id: 1,  nome: "Copo 200ml Econômico",    preco: 10.00 },
-  { id: 2,  nome: "Copo 300ml Tradicional",  preco: 15.00 },
-  { id: 3,  nome: "Copo 400ml Médio",        preco: 18.00 },
-  { id: 4,  nome: "Copo 500ml Grande",       preco: 22.00 },
-  { id: 5,  nome: "Copo 700ml Gigante",      preco: 28.00 },
-  { id: 6,  nome: "Tigela 500ml Casa",       preco: 24.00 },
-  { id: 7,  nome: "Tigela 800ml Família",    preco: 35.00 },
-  { id: 8,  nome: "Barca de Açaí P",         preco: 45.00 },
-  { id: 9,  nome: "Barca de Açaí G",         preco: 65.00 },
-  { id: 10, nome: "Copo Trufado Nutella",    preco: 26.00 },
-  { id: 11, nome: "Copo Trufado Ninho",      preco: 26.00 },
-  { id: 12, nome: "Açaí Zero Açúcar 400ml",  preco: 21.00 }
-];
-
-const complementos = [
-  "Leite em Pó", "Granola", "Banana", "Morango", "Nutella", "Paçoca",
-  "Leite Condensado", "M&Ms", "Coco Ralado", "Ovomaltine", "Bis", "Kiwi"
-];
+let produtos     = [];
+let complementos = [];
 
 let carrinho = [];
 const MAX_ACOMPANHAMENTOS = 4;
@@ -172,7 +155,20 @@ async function confirmarPedido() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const [resProd, resComp] = await Promise.all([
+      fetch(`${API}/cardapio`),
+      fetch(`${API}/complementos`),
+    ]);
+    produtos     = await resProd.json();
+    const comps  = await resComp.json();
+    complementos = comps.map(c => c.nome);
+  } catch (e) {
+    document.getElementById('produtos-grid').innerHTML =
+      '<p style="text-align:center;color:#e74c3c">Erro ao carregar cardápio. Verifique a conexão.</p>';
+    return;
+  }
   renderVitrine();
   const ids = JSON.parse(localStorage.getItem('pedidoIds') || '[]');
   if (ids.length > 0) {

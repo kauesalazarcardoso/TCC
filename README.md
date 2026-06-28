@@ -83,7 +83,13 @@ docker compose down
 |---|---|
 | Painel de pedidos | http://localhost:8081 |
 
-> O painel do gestor (`estabelecimento.html`) retorna **403** se acessado pela porta 8080 — clientes não conseguem acessá-lo diretamente. As duas interfaces são servidas pelo mesmo container Nginx em portas separadas.
+### Admin (porta 8082)
+
+| Página | URL |
+|---|---|
+| Gerenciar cardápio | http://localhost:8082 |
+
+> Cada interface é isolada por porta no mesmo container Nginx. A porta 8080 bloqueia (`403`) o acesso a `estabelecimento.html` e `admin.html`. A porta 8081 bloqueia `admin.html`. Apenas a porta 8082 serve o painel admin.
 
 ---
 
@@ -108,6 +114,10 @@ Base URL: `http://localhost:5000`
 | POST | `/pedidos` | Cria novo pedido |
 | PATCH | `/pedidos/<id>/status` | Avança status do pedido |
 | DELETE | `/pedidos/entregues` | Remove pedidos entregues |
+| GET | `/cardapio` | Lista itens do cardápio |
+| POST | `/cardapio` | Cria item no cardápio |
+| PUT | `/cardapio/<id>` | Edita nome e preço de um item |
+| DELETE | `/cardapio/<id>` | Remove item do cardápio |
 
 ### Fluxo de status
 

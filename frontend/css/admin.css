@@ -1,0 +1,267 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@400;600&display=swap');
+
+:root {
+  --primary: #4b1d8d;
+  --accent:  #27ae60;
+  --danger:  #e74c3c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  margin: 0;
+  background: #f0ebfa;
+  color: #333;
+  min-height: 100vh;
+}
+
+.header {
+  background: var(--primary);
+  color: white;
+  padding: 16px 5%;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header h1 {
+  margin: 0;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.4rem;
+}
+
+.container {
+  max-width: 860px;
+  margin: 30px auto;
+  padding: 0 20px;
+}
+
+.secao {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+}
+
+.secao h2 {
+  margin: 0 0 20px;
+  font-family: 'Baloo 2', cursive;
+  color: var(--primary);
+}
+
+/* Formulário de novo item */
+.form-novo {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.form-novo input[type="text"] {
+  flex: 2;
+  min-width: 180px;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.95rem;
+}
+
+.form-novo input[type="number"] {
+  flex: 1;
+  min-width: 110px;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.95rem;
+}
+
+.form-novo button {
+  padding: 10px 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.form-novo button:hover { opacity: 0.88; }
+
+.erro {
+  color: var(--danger);
+  font-size: 0.85rem;
+  min-height: 18px;
+  margin: 4px 0 12px;
+}
+
+/* Tabela */
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.93rem;
+}
+
+.tabela th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #f5f0fc;
+  color: var(--primary);
+  font-weight: bold;
+  border-bottom: 2px solid #e0d5f5;
+}
+
+.tabela td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.tabela tr:last-child td { border-bottom: none; }
+.tabela tr:hover td { background: #faf8ff; }
+
+.acoes-td {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-editar {
+  padding: 6px 14px;
+  background: #2980b9;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.85rem;
+}
+
+.btn-editar:hover { opacity: 0.85; }
+
+.btn-remover {
+  padding: 6px 12px;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.85rem;
+}
+
+.btn-remover:hover { opacity: 0.85; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 14px;
+  padding: 28px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+.modal-box h3 {
+  margin: 0 0 18px;
+  font-family: 'Baloo 2', cursive;
+  color: var(--primary);
+}
+
+.modal-box label {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+
+.modal-box input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.95rem;
+}
+
+.modal-acoes {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-cancelar {
+  flex: 1;
+  padding: 10px;
+  background: #eee;
+  color: #555;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-weight: bold;
+}
+
+.btn-salvar {
+  flex: 2;
+  padding: 10px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-weight: bold;
+}
+
+.btn-salvar:hover   { opacity: 0.88; }
+.btn-cancelar:hover { opacity: 0.88; }
+
+/* Tags de complementos */
+.complementos-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tag-complemento {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0ebfa;
+  border: 1px solid #d5c8f0;
+  color: var(--primary);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.tag-complemento button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0;
+  line-height: 1;
+}
+
+.tag-complemento button:hover { opacity: 0.7; }

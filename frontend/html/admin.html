@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Açaí Express</title>
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <header class="header">
+    <h1>⚙️ Painel Admin — Açaí Express</h1>
+  </header>
+
+  <div class="container">
+
+    <section class="secao">
+      <h2>🍧 Cardápio</h2>
+      <div class="form-novo">
+        <input type="text" id="novo-nome" placeholder="Nome do item" />
+        <input type="number" id="novo-preco" placeholder="Preço (R$)" step="0.01" min="0.01" />
+        <button onclick="adicionarItem()">+ Adicionar</button>
+      </div>
+      <p id="erro-form" class="erro"></p>
+      <table class="tabela">
+        <thead>
+          <tr><th>#</th><th>Nome</th><th>Preço</th><th>Ações</th></tr>
+        </thead>
+        <tbody id="tabela-body">
+          <tr><td colspan="4" style="text-align:center;color:#999">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="secao" style="margin-top:24px">
+      <h2>🍌 Complementos</h2>
+      <div class="form-novo">
+        <input type="text" id="novo-complemento" placeholder="Nome do complemento" />
+        <button onclick="adicionarComplemento()">+ Adicionar</button>
+      </div>
+      <p id="erro-complemento" class="erro"></p>
+      <div id="lista-complementos" class="complementos-grid"></div>
+    </section>
+
+  </div>
+
+  <div id="modal" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+      <h3>Editar Item</h3>
+      <input type="hidden" id="editar-id" />
+      <label>Nome</label>
+      <input type="text" id="editar-nome" />
+      <label>Preço (R$)</label>
+      <input type="number" id="editar-preco" step="0.01" min="0.01" />
+      <p id="erro-modal" class="erro"></p>
+      <div class="modal-acoes">
+        <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-salvar" onclick="salvarEdicao()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/admin.js"></script>
+</body>
+</html>

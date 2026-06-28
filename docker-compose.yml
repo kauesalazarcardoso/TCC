@@ -19,13 +19,14 @@ services:
     ports:
       - "8080:80"   # cliente
       - "8081:81"   # gestor
+      - "8082:82"   # admin
     restart: unless-stopped
 
   sqlite-web:
     image: coleifer/sqlite-web
     container_name: acai_sqlite_web
     ports:
-      - "8082:8080"
+      - "8083:8080"
     volumes:
       - ./db:/data
     command: sqlite_web --host 0.0.0.0 /data/pedidos.db
