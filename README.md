@@ -1,6 +1,6 @@
 # Sistema Web de Pedidos — Açaí Express
 
-Sistema web para gerenciamento de pedidos de açaí, desenvolvido para pequenos estabelecimentos. Substitui atendimentos manuais por um fluxo digital com painel separado para cliente e gestor.
+Sistema web para gerenciamento de pedidos de açaí, desenvolvido para pequenos estabelecimentos. Substitui atendimentos manuais por um fluxo digital com três painéis separados: cliente, gestor e administrador.
 
 ---
 
@@ -25,7 +25,8 @@ projetoMultidiciplinar/
 │   │   ├── index.html           # Página inicial (cliente)
 │   │   ├── pedido.html          # Montagem de pedido (cliente)
 │   │   ├── acompanhar.html      # Acompanhamento de pedidos (cliente)
-│   │   └── estabelecimento.html # Painel do gestor (acesso restrito à porta 8081)
+│   │   ├── estabelecimento.html # Painel do gestor (porta 8081)
+│   │   └── admin.html           # Painel do admin (porta 8082)
 │   ├── css/
 │   ├── js/
 │   └── Dockerfile
@@ -34,14 +35,15 @@ projetoMultidiciplinar/
 │   │   ├── app.py               # Entrada da aplicação Flask
 │   │   ├── database.py          # Conexão e inicialização do banco
 │   │   └── routes/
-│   │       └── pedidos.py       # Rotas da API
+│   │       ├── pedidos.py       # Rotas de pedidos
+│   │       └── cardapio.py      # Rotas de cardápio e complementos
 │   ├── tests/
 │   │   ├── conftest.py
 │   │   ├── test_unit.py
 │   │   └── test_integracao.py
 │   ├── requirements.txt
 │   └── Dockerfile
-├── db/                          # Volume do banco SQLite (gerado automaticamente, não versionado)
+├── db/                          # Volume do banco SQLite (gerado automaticamente)
 └── docker-compose.yml
 ```
 
@@ -69,7 +71,16 @@ docker compose down
 
 ## Acesso
 
-### Cliente (porta 8080)
+| Perfil | URL | Descrição |
+|---|---|---|
+| **Cliente** | http://localhost:8080 | Fazer e acompanhar pedidos |
+| **Gestor** | http://localhost:8081 | Receber e avançar pedidos |
+| **Admin** | http://localhost:8082 | Gerenciar cardápio e complementos |
+| SQLite Web | http://localhost:8083 | Visualizar banco de dados |
+
+> Cada perfil é isolado por porta no mesmo container Nginx. Acessar uma página pelo perfil errado retorna **403**.
+
+### Páginas do cliente (porta 8080)
 
 | Página | URL |
 |---|---|
@@ -77,34 +88,33 @@ docker compose down
 | Fazer pedido | http://localhost:8080/html/pedido.html |
 | Acompanhar pedidos | http://localhost:8080/html/acompanhar.html |
 
-### Gestor (porta 8081)
-
-| Página | URL |
-|---|---|
-| Painel de pedidos | http://localhost:8081 |
-
-### Admin (porta 8082)
-
-| Página | URL |
-|---|---|
-| Gerenciar cardápio | http://localhost:8082 |
-
-> Cada interface é isolada por porta no mesmo container Nginx. A porta 8080 bloqueia (`403`) o acesso a `estabelecimento.html` e `admin.html`. A porta 8081 bloqueia `admin.html`. Apenas a porta 8082 serve o painel admin.
-
 ---
 
-## Funcionalidades do cliente
+## Funcionalidades
 
-- Montar pedido com produtos e acompanhamentos
-- Acompanhar **múltiplos pedidos simultâneos** em tempo real (atualização automática a cada 5 segundos)
-- Os pedidos ativos ficam salvos localmente no navegador — o cliente pode fechar e reabrir a página sem perder o acompanhamento
-- Pedidos entregues são removidos automaticamente da lista de acompanhamento
+### Cliente
+- Montar pedido com produtos e acompanhamentos (máx. 4 por item)
+- Acompanhar **múltiplos pedidos simultâneos** em tempo real (atualização a cada 5 segundos)
+- Pedidos ativos salvos no navegador — fecha e reabre sem perder o acompanhamento
+- Pedidos entregues removidos automaticamente da lista
+
+### Gestor
+- Visualizar todos os pedidos em tempo real
+- Avançar status do pedido: `aguardando → confirmado → a_caminho → entregue`
+- Limpar pedidos entregues
+
+### Admin
+- Cadastrar, editar e remover itens do cardápio (nome e preço)
+- Cadastrar e remover complementos (acompanhamentos disponíveis)
+- Alterações refletem imediatamente na página de pedido do cliente
 
 ---
 
 ## API — Backend
 
 Base URL: `http://localhost:5000`
+
+### Pedidos
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -114,10 +124,23 @@ Base URL: `http://localhost:5000`
 | POST | `/pedidos` | Cria novo pedido |
 | PATCH | `/pedidos/<id>/status` | Avança status do pedido |
 | DELETE | `/pedidos/entregues` | Remove pedidos entregues |
-| GET | `/cardapio` | Lista itens do cardápio |
-| POST | `/cardapio` | Cria item no cardápio |
-| PUT | `/cardapio/<id>` | Edita nome e preço de um item |
-| DELETE | `/cardapio/<id>` | Remove item do cardápio |
+
+### Cardápio
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/cardapio` | Lista todos os itens |
+| POST | `/cardapio` | Cria novo item |
+| PUT | `/cardapio/<id>` | Edita nome e preço |
+| DELETE | `/cardapio/<id>` | Remove item |
+
+### Complementos
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/complementos` | Lista todos os complementos |
+| POST | `/complementos` | Cria novo complemento |
+| DELETE | `/complementos/<id>` | Remove complemento |
 
 ### Fluxo de status
 
@@ -141,7 +164,7 @@ curl -X POST http://localhost:5000/pedidos \
 
 ## Testes
 
-Com o projeto rodando (`docker compose up --build -d`):
+Com o projeto rodando:
 
 ```bash
 docker compose exec backend python -m pytest tests/ -v
@@ -154,14 +177,6 @@ docker compose run --rm backend python -m pytest tests/ -v
 ```
 
 10 testes cobrindo criação, listagem, busca, avanço de status, remoção e casos de erro. Cada teste roda com banco isolado em memória.
-
----
-
-## Rebuild após alterações
-
-```bash
-docker compose up --build -d
-```
 
 ---
 
