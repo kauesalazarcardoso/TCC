@@ -131,9 +131,16 @@ curl -X POST http://localhost:5000/pedidos \
 
 ## Testes
 
+Com o projeto rodando (`docker compose up --build -d`):
+
 ```bash
-cd backend
-python -m pytest tests/ -v
+docker compose exec backend python -m pytest tests/ -v
+```
+
+Ou sem o projeto em execução (container descartável):
+
+```bash
+docker compose run --rm backend python -m pytest tests/ -v
 ```
 
 10 testes cobrindo criação, listagem, busca, avanço de status, remoção e casos de erro. Cada teste roda com banco isolado em memória.
