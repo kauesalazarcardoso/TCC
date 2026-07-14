@@ -19,7 +19,7 @@ Sistema web para gerenciamento de pedidos de açaí, desenvolvido para pequenos 
 ## Arquitetura
 
 ```
-projetoMultidiciplinar/
+TCC/
 ├── frontend/
 │   ├── html/
 │   │   ├── index.html           # Página inicial (cliente)
@@ -185,5 +185,5 @@ docker compose run --rm backend python -m pytest tests/ -v
 **Instituto Federal de Educação, Ciência e Tecnologia — Rio Grande do Sul — Campus Rolante**  
 Curso Superior em Tecnologia em Análise e Desenvolvimento de Sistemas  
 **Aluno:** Kauê Salazar Cardoso  
-**Disciplina:** Projeto Multidisciplinar  
+**Disciplina:** Trabalho de Conclusão de Curso (TCC)  
 **Projeto:** Sistema Web de Pedidos de Açaí
