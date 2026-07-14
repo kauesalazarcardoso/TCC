@@ -1,4 +1,5 @@
 const API = 'http://localhost:5000';
+const TAXA_ENTREGA = 3.0;
 
 let produtos     = [];
 let complementos = [];
@@ -86,8 +87,15 @@ function updateUI() {
         </div>
       </div>`;
   }).join('');
+  const taxa = qtdTotal > 0 ? TAXA_ENTREGA : 0;
   document.getElementById('cart-count').innerText = qtdTotal;
-  document.getElementById('cart-total').innerText  = `R$ ${total.toFixed(2)}`;
+  document.getElementById('cart-taxa').innerText  = `R$ ${taxa.toFixed(2)}`;
+  document.getElementById('cart-total').innerText  = `R$ ${(total + taxa).toFixed(2)}`;
+}
+
+function alternarCampoCartao() {
+  const cartao = document.querySelector('input[name="forma-pagamento"]:checked').value === 'cartao';
+  document.getElementById('cartao-campos').classList.toggle('active', cartao);
 }
 
 function toggleCart(estado) {
@@ -111,26 +119,57 @@ async function confirmarPedido() {
   const numero = document.getElementById('input-numero').value.trim();
   const bairro = document.getElementById('input-bairro').value.trim();
   const erro   = document.getElementById('modal-erro');
+  const formaPagamento = document.querySelector('input[name="forma-pagamento"]:checked').value;
 
   if (!nome || !tel || !rua || !numero || !bairro) {
     erro.textContent = 'Preencha todos os campos para continuar.';
     return;
   }
 
-  const end   = `${rua}, ${numero} — ${bairro}, Rolante`;
-  const total = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
+  let cartaoDados = null;
+  if (formaPagamento === 'cartao') {
+    cartaoDados = {
+      nome_titular: document.getElementById('input-cartao-nome').value.trim(),
+      numero:       document.getElementById('input-cartao-numero').value.trim(),
+      validade:     document.getElementById('input-cartao-validade').value.trim(),
+      cvv:          document.getElementById('input-cartao-cvv').value.trim(),
+    };
+    if (!cartaoDados.nome_titular || !cartaoDados.numero || !cartaoDados.validade || !cartaoDados.cvv) {
+      erro.textContent = 'Preencha todos os dados do cartão.';
+      return;
+    }
+  }
 
-  const payload = {
-    cliente: { nome, tel, end },
-    itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, extras: i.extras, qtd: i.qtd })),
-    total
-  };
+  const end     = `${rua}, ${numero} — ${bairro}, Rolante`;
+  const subtotal = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
+  const total    = subtotal + TAXA_ENTREGA;
+
+  const btnEnviar = document.querySelector('.modal .btn-finalizar');
 
   try {
     erro.textContent = '';
-    const btnEnviar = document.querySelector('.modal .btn-finalizar');
     btnEnviar.disabled    = true;
     btnEnviar.textContent = 'Enviando…';
+
+    let pagamentoToken = null;
+    if (formaPagamento === 'cartao') {
+      const resCartao = await fetch(`${API}/pagamentos/cartao`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(cartaoDados)
+      });
+      const dataCartao = await resCartao.json();
+      if (!resCartao.ok) throw new Error(dataCartao.erro || `Erro ${resCartao.status}`);
+      pagamentoToken = dataCartao.token;
+    }
+
+    const payload = {
+      cliente: { nome, tel, end },
+      itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, extras: i.extras, qtd: i.qtd })),
+      total,
+      forma_pagamento: formaPagamento,
+      ...(pagamentoToken ? { pagamento_token: pagamentoToken } : {})
+    };
 
     const res  = await fetch(`${API}/pedidos`, {
       method:  'POST',
@@ -145,11 +184,12 @@ async function confirmarPedido() {
     if (!ids.includes(String(data.id))) ids.push(String(data.id));
     localStorage.setItem('pedidoIds', JSON.stringify(ids));
     window.location.href = `acompanhar.html?id=${data.id}`;
-  
+
   } catch (e) {
     console.error(e);
-    erro.textContent = 'Erro ao enviar pedido. Verifique a conexão e tente novamente.';
-    const btnEnviar = document.querySelector('.modal .btn-finalizar');
+    erro.textContent = e.message && e.message !== 'Failed to fetch'
+      ? e.message
+      : 'Erro ao enviar pedido. Verifique a conexão e tente novamente.';
     btnEnviar.disabled    = false;
     btnEnviar.textContent = 'Enviar Pedido →';
   }

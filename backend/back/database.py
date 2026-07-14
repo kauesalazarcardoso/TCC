@@ -40,19 +40,39 @@ def get_conn():
         conn.close()
 
 
+_PEDIDOS_COLUNAS_NOVAS = {
+    "forma_pagamento": "TEXT NOT NULL DEFAULT 'pix'",
+    "taxa_entrega":    "REAL NOT NULL DEFAULT 3.0",
+    "cartao_ultimos4": "TEXT",
+    "cartao_bandeira": "TEXT",
+}
+
+
+def _migrar_pedidos(conn):
+    colunas_atuais = {row["name"] for row in conn.execute("PRAGMA table_info(pedidos)")}
+    for coluna, definicao in _PEDIDOS_COLUNAS_NOVAS.items():
+        if coluna not in colunas_atuais:
+            conn.execute(f"ALTER TABLE pedidos ADD COLUMN {coluna} {definicao}")
+
+
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with get_conn() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS pedidos (
-                id      INTEGER PRIMARY KEY,
-                cliente TEXT    NOT NULL,
-                itens   TEXT    NOT NULL,
-                total   REAL    NOT NULL,
-                status  TEXT    NOT NULL DEFAULT 'aguardando',
-                hora    TEXT    NOT NULL
+                id              INTEGER PRIMARY KEY,
+                cliente         TEXT    NOT NULL,
+                itens           TEXT    NOT NULL,
+                total           REAL    NOT NULL,
+                status          TEXT    NOT NULL DEFAULT 'aguardando',
+                hora            TEXT    NOT NULL,
+                forma_pagamento TEXT    NOT NULL DEFAULT 'pix',
+                taxa_entrega    REAL    NOT NULL DEFAULT 3.0,
+                cartao_ultimos4 TEXT,
+                cartao_bandeira TEXT
             )
         """)
+        _migrar_pedidos(conn)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS cardapio (
                 id    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,6 +84,17 @@ def init_db():
             CREATE TABLE IF NOT EXISTS complementos (
                 id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT    NOT NULL UNIQUE
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS cartoes (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                token        TEXT    NOT NULL UNIQUE,
+                nome_titular TEXT    NOT NULL,
+                ultimos4     TEXT    NOT NULL,
+                bandeira     TEXT    NOT NULL,
+                validade     TEXT    NOT NULL,
+                criado_em    TEXT    NOT NULL
             )
         """)
         if conn.execute("SELECT COUNT(*) FROM cardapio").fetchone()[0] == 0:

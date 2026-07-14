@@ -225,6 +225,14 @@ body {
 
 .sidebar-footer { padding: 20px; border-top: 2px solid #eee; }
 
+.taxa-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  color: #777;
+  margin-bottom: 8px;
+}
+
 .total-row {
   display: flex;
   justify-content: space-between;
@@ -313,6 +321,48 @@ body {
   font-size: 0.85rem;
   min-height: 18px;
 }
+
+.pagamento-opcoes {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.pagamento-opcao {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #444;
+  cursor: pointer;
+}
+
+.pagamento-opcao:has(input:checked) {
+  border-color: var(--secondary);
+  background: rgba(0,0,0,0.03);
+}
+
+.cartao-campos {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cartao-campos.active {
+  display: flex;
+}
+
+.cartao-campos-linha {
+  display: flex;
+  gap: 8px;
+}
+
+.cartao-campos-linha input { flex: 1; min-width: 0; }
 
 .btn-cancelar {
   width: 100%;

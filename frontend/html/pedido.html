@@ -26,6 +26,10 @@
     </div>
     <div class="cart-items" id="cart-list"></div>
     <div class="sidebar-footer">
+      <div class="taxa-row">
+        <span>Taxa de entrega:</span>
+        <span id="cart-taxa">R$ 0,00</span>
+      </div>
       <div class="total-row">
         <span>Total:</span>
         <span id="cart-total">R$ 0,00</span>
@@ -50,6 +54,34 @@
       <input type="text" id="input-bairro" placeholder="Ex: Centro">
       <label>Cidade</label>
       <input type="text" id="input-cidade" value="Rolante" readonly style="background:#f0f0f0;cursor:not-allowed;color:#888;">
+
+      <label>Forma de pagamento</label>
+      <div class="pagamento-opcoes">
+        <label class="pagamento-opcao">
+          <input type="radio" name="forma-pagamento" value="pix" checked onchange="alternarCampoCartao()"> Pix
+        </label>
+        <label class="pagamento-opcao">
+          <input type="radio" name="forma-pagamento" value="cartao" onchange="alternarCampoCartao()"> Cartão de Crédito
+        </label>
+      </div>
+
+      <div class="cartao-campos" id="cartao-campos">
+        <label>Nome no cartão</label>
+        <input type="text" id="input-cartao-nome" placeholder="Ex: JOAO SILVA">
+        <label>Número do cartão</label>
+        <input type="text" id="input-cartao-numero" placeholder="Ex: 4111 1111 1111 1111" inputmode="numeric">
+        <div class="cartao-campos-linha">
+          <div style="flex:1">
+            <label>Validade</label>
+            <input type="text" id="input-cartao-validade" placeholder="MM/AA">
+          </div>
+          <div style="flex:1">
+            <label>CVV</label>
+            <input type="text" id="input-cartao-cvv" placeholder="123" inputmode="numeric">
+          </div>
+        </div>
+      </div>
+
       <div id="modal-erro" class="modal-erro"></div>
       <button class="btn-finalizar" onclick="confirmarPedido()">Enviar Pedido →</button>
       <button class="btn-cancelar" onclick="fecharModal()">Voltar</button>
@@ -80,6 +112,6 @@
     </div>
   </footer>
 
-  <script src="/js/pedido.js?v=4"></script>
+  <script src="/js/pedido.js?v=5"></script>
 </body>
 </html>

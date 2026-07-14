@@ -9,6 +9,13 @@ const LABELS = {
   entregue:   '🎉 Entregue',
 };
 
+function formatarPagamento(pedido) {
+  if (pedido.forma_pagamento === 'cartao') {
+    return `Cartão •••• ${pedido.cartao_ultimos4 || '----'} (${pedido.cartao_bandeira || 'Outro'})`;
+  }
+  return 'Pix';
+}
+
 // ── BUSCA TODOS OS PEDIDOS ────────────────────────────────────
 async function fetchPedidos() {
   try {
@@ -126,6 +133,14 @@ async function render() {
 
         <div class="itens-lista">
           ${itensHTML}
+          <div class="item-row">
+            <span>Taxa de entrega</span>
+            <span>R$ ${Number(p.taxa_entrega || 0).toFixed(2)}</span>
+          </div>
+          <div class="item-row">
+            <span>Pagamento</span>
+            <span>${formatarPagamento(p)}</span>
+          </div>
           <div class="total-row">
             <span>Total</span>
             <span>R$ ${Number(p.total).toFixed(2)}</span>

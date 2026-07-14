@@ -73,11 +73,26 @@ function cardHTML(pedido) {
       <div class="timeline">${stepsHTML}</div>
       <h3 class="itens-titulo">Itens do Pedido</h3>
       ${itensHTML}
+      <div class="item-linha">
+        <div>Taxa de entrega</div>
+        <div>R$ ${Number(pedido.taxa_entrega || 0).toFixed(2)}</div>
+      </div>
+      <div class="item-linha">
+        <div>Pagamento</div>
+        <div>${formatarPagamento(pedido)}</div>
+      </div>
       <div class="total-linha">
         <span>Total</span>
         <span>R$ ${Number(pedido.total).toFixed(2)}</span>
       </div>
     </div>`;
+}
+
+function formatarPagamento(pedido) {
+  if (pedido.forma_pagamento === 'cartao') {
+    return `Cartão •••• ${pedido.cartao_ultimos4 || '----'} (${pedido.cartao_bandeira || 'Outro'})`;
+  }
+  return 'Pix';
 }
 
 async function render() {

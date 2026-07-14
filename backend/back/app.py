@@ -3,12 +3,14 @@ from flask_cors import CORS
 from database import init_db
 from routes.pedidos import pedidos_bp
 from routes.cardapio import cardapio_bp
+from routes.pagamentos import pagamentos_bp
 
 app = Flask(__name__)
 CORS(app)
 
 app.register_blueprint(pedidos_bp)
 app.register_blueprint(cardapio_bp)
+app.register_blueprint(pagamentos_bp)
 init_db()
 
 
