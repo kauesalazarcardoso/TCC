@@ -10,7 +10,10 @@ ORDEM_STATUS = ['aguardando', 'confirmado', 'a_caminho', 'entregue']
 FORMAS_PAGAMENTO = ('pix', 'cartao')
 TAXA_ENTREGA = 3.0
 
-_COLUNAS_PEDIDO = "id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, cartao_ultimos4, cartao_bandeira"
+_COLUNAS_PEDIDO = (
+    "id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, "
+    "cartao_ultimos4, cartao_bandeira, pix_txid"
+)
 
 
 def _serializar_pedido(row):
@@ -25,6 +28,7 @@ def _serializar_pedido(row):
         "taxa_entrega":    row["taxa_entrega"],
         "cartao_ultimos4": row["cartao_ultimos4"],
         "cartao_bandeira": row["cartao_bandeira"],
+        "pix_txid":        row["pix_txid"],
     }
 
 
@@ -67,6 +71,7 @@ def criar_pedido():
 
     cartao_ultimos4 = None
     cartao_bandeira = None
+    pix_txid        = None
 
     if forma_pagamento == "cartao":
         if not data.get("pagamento_token"):
@@ -84,14 +89,30 @@ def criar_pedido():
         cartao_ultimos4 = cartao["ultimos4"]
         cartao_bandeira = cartao["bandeira"]
 
+    elif forma_pagamento == "pix":
+        if not data.get("pagamento_referencia"):
+            return jsonify({"erro": "Referência de pagamento Pix é obrigatória"}), 400
+
+        with get_conn() as conn:
+            cobranca = conn.execute(
+                "SELECT txid FROM pix_cobrancas WHERE txid = ?",
+                (data["pagamento_referencia"],)
+            ).fetchone()
+
+        if not cobranca:
+            return jsonify({"erro": "Referência de pagamento Pix inválida"}), 400
+
+        pix_txid = cobranca["txid"]
+
     pedido_id = int(time.time() * 1000)
     hora      = datetime.now().strftime("%H:%M")
 
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO pedidos "
-            "(id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, cartao_ultimos4, cartao_bandeira) "
-            "VALUES (?, ?, ?, ?, 'aguardando', ?, ?, ?, ?, ?)",
+            "(id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, "
+            "cartao_ultimos4, cartao_bandeira, pix_txid) "
+            "VALUES (?, ?, ?, ?, 'aguardando', ?, ?, ?, ?, ?, ?)",
             (
                 pedido_id,
                 json.dumps(data["cliente"], ensure_ascii=False),
@@ -102,6 +123,7 @@ def criar_pedido():
                 TAXA_ENTREGA,
                 cartao_ultimos4,
                 cartao_bandeira,
+                pix_txid,
             )
         )
 

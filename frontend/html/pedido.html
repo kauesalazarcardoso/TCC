@@ -58,11 +58,19 @@
       <label>Forma de pagamento</label>
       <div class="pagamento-opcoes">
         <label class="pagamento-opcao">
-          <input type="radio" name="forma-pagamento" value="pix" checked onchange="alternarCampoCartao()"> Pix
+          <input type="radio" name="forma-pagamento" value="pix" checked onchange="alternarFormaPagamento()"> Pix
         </label>
         <label class="pagamento-opcao">
-          <input type="radio" name="forma-pagamento" value="cartao" onchange="alternarCampoCartao()"> Cartão de Crédito
+          <input type="radio" name="forma-pagamento" value="cartao" onchange="alternarFormaPagamento()"> Cartão de Crédito
         </label>
+      </div>
+
+      <div class="pix-campos active" id="pix-campos">
+        <div class="pix-qrcode" id="pix-qrcode">Gerando QR Code…</div>
+        <div class="cartao-campos-linha">
+          <input type="text" id="pix-copia-cola" readonly placeholder="Código Pix copia e cola">
+          <button type="button" class="btn-copiar" onclick="copiarPix()">Copiar</button>
+        </div>
       </div>
 
       <div class="cartao-campos" id="cartao-campos">
@@ -112,6 +120,7 @@
     </div>
   </footer>
 
-  <script src="/js/pedido.js?v=5"></script>
+  <script src="/js/vendor/qrcode.js"></script>
+  <script src="/js/pedido.js?v=6"></script>
 </body>
 </html>

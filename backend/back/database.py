@@ -45,6 +45,7 @@ _PEDIDOS_COLUNAS_NOVAS = {
     "taxa_entrega":    "REAL NOT NULL DEFAULT 3.0",
     "cartao_ultimos4": "TEXT",
     "cartao_bandeira": "TEXT",
+    "pix_txid":        "TEXT",
 }
 
 
@@ -69,7 +70,8 @@ def init_db():
                 forma_pagamento TEXT    NOT NULL DEFAULT 'pix',
                 taxa_entrega    REAL    NOT NULL DEFAULT 3.0,
                 cartao_ultimos4 TEXT,
-                cartao_bandeira TEXT
+                cartao_bandeira TEXT,
+                pix_txid        TEXT
             )
         """)
         _migrar_pedidos(conn)
@@ -95,6 +97,15 @@ def init_db():
                 bandeira     TEXT    NOT NULL,
                 validade     TEXT    NOT NULL,
                 criado_em    TEXT    NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pix_cobrancas (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                txid       TEXT    NOT NULL UNIQUE,
+                valor      REAL    NOT NULL,
+                copia_cola TEXT    NOT NULL,
+                criado_em  TEXT    NOT NULL
             )
         """)
         if conn.execute("SELECT COUNT(*) FROM cardapio").fetchone()[0] == 0:

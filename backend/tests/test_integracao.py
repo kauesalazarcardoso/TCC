@@ -2,7 +2,14 @@ import json
 import pytest
 
 
+def _gerar_txid_pix(client, valor):
+    resp = client.post("/pagamentos/pix", json={"valor": valor})
+    return json.loads(resp.data)["txid"]
+
+
 def test_criar_pedido(client):
+
+    txid = _gerar_txid_pix(client, 30.0)
 
     pedido = {
         "cliente": {
@@ -15,7 +22,8 @@ def test_criar_pedido(client):
             }
         ],
         "total": 30.0,
-        "forma_pagamento": "pix"
+        "forma_pagamento": "pix",
+        "pagamento_referencia": txid
     }
 
     response = client.post(
@@ -43,6 +51,8 @@ def test_listar_pedidos(client):
 
 def test_avancar_status(client):
 
+    txid = _gerar_txid_pix(client, 25)
+
     pedido = {
         "cliente": {
             "nome": "Teste"
@@ -54,7 +64,8 @@ def test_avancar_status(client):
             }
         ],
         "total": 25,
-        "forma_pagamento": "pix"
+        "forma_pagamento": "pix",
+        "pagamento_referencia": txid
     }
 
     criar = client.post(
@@ -86,11 +97,14 @@ def test_limpar_entregues(client):
 
 def test_buscar_pedido_por_id(client):
 
+    txid = _gerar_txid_pix(client, 20)
+
     pedido = {
         "cliente": {"nome": "Kauê"},
         "itens": [{"nome": "Açaí", "quantidade": 1}],
         "total": 20,
-        "forma_pagamento": "pix"
+        "forma_pagamento": "pix",
+        "pagamento_referencia": txid
     }
 
     criar = client.post("/pedidos", json=pedido)
@@ -215,3 +229,86 @@ def test_criar_pedido_com_cartao_fluxo_completo(client):
     assert data["forma_pagamento"] == "cartao"
     assert data["cartao_ultimos4"] == "0004"
     assert data["cartao_bandeira"] == "Mastercard"
+
+
+def test_gerar_pix_sucesso(client):
+
+    response = client.post("/pagamentos/pix", json={"valor": 21.0})
+
+    assert response.status_code == 201
+
+    data = json.loads(response.data)
+
+    assert data["txid"].startswith("PIX")
+    assert "br.gov.bcb.pix" in data["copia_cola"]
+
+    crc_informado = data["copia_cola"][-4:]
+    assert len(crc_informado) == 4
+    int(crc_informado, 16)  # deve ser hexadecimal válido
+
+
+def test_gerar_pix_valor_invalido(client):
+
+    response = client.post("/pagamentos/pix", json={"valor": -5})
+
+    assert response.status_code == 400
+
+
+def test_gerar_pix_sem_valor(client):
+
+    response = client.post("/pagamentos/pix", json={})
+
+    assert response.status_code == 400
+
+
+def test_criar_pedido_pix_sem_referencia(client):
+
+    pedido = {
+        "cliente": {"nome": "Kauê"},
+        "itens": [{"nome": "Açaí", "quantidade": 1}],
+        "total": 20,
+        "forma_pagamento": "pix"
+    }
+
+    response = client.post("/pedidos", json=pedido)
+
+    assert response.status_code == 400
+
+
+def test_criar_pedido_pix_referencia_invalida(client):
+
+    pedido = {
+        "cliente": {"nome": "Kauê"},
+        "itens": [{"nome": "Açaí", "quantidade": 1}],
+        "total": 20,
+        "forma_pagamento": "pix",
+        "pagamento_referencia": "PIXINEXISTENTE"
+    }
+
+    response = client.post("/pedidos", json=pedido)
+
+    assert response.status_code == 400
+
+
+def test_criar_pedido_com_pix_fluxo_completo(client):
+
+    txid = _gerar_txid_pix(client, 20)
+
+    pedido = {
+        "cliente": {"nome": "Kauê"},
+        "itens": [{"nome": "Açaí", "quantidade": 1}],
+        "total": 20,
+        "forma_pagamento": "pix",
+        "pagamento_referencia": txid
+    }
+
+    criar = client.post("/pedidos", json=pedido)
+    assert criar.status_code == 201
+
+    pedido_id = json.loads(criar.data)["id"]
+
+    response = client.get(f"/pedidos/{pedido_id}")
+    data = json.loads(response.data)
+
+    assert data["forma_pagamento"] == "pix"
+    assert data["pix_txid"] == txid

@@ -7,6 +7,9 @@ let complementos = [];
 let carrinho = [];
 const MAX_ACOMPANHAMENTOS = 4;
 
+let pixTxid      = null;
+let pixCopiaCola = null;
+
 function limitarAcompanhamentos(produtoId) {
   const checkboxes = document.querySelectorAll(`.check-${produtoId}`);
   const marcados   = Array.from(checkboxes).filter(c => c.checked).length;
@@ -93,9 +96,57 @@ function updateUI() {
   document.getElementById('cart-total').innerText  = `R$ ${(total + taxa).toFixed(2)}`;
 }
 
-function alternarCampoCartao() {
-  const cartao = document.querySelector('input[name="forma-pagamento"]:checked').value === 'cartao';
-  document.getElementById('cartao-campos').classList.toggle('active', cartao);
+function alternarFormaPagamento() {
+  const forma = document.querySelector('input[name="forma-pagamento"]:checked').value;
+  document.getElementById('cartao-campos').classList.toggle('active', forma === 'cartao');
+  document.getElementById('pix-campos').classList.toggle('active', forma === 'pix');
+  if (forma === 'pix') gerarPix();
+}
+
+async function gerarPix() {
+  const qrEl = document.getElementById('pix-qrcode');
+  const copiaColaEl = document.getElementById('pix-copia-cola');
+
+  pixTxid      = null;
+  pixCopiaCola = null;
+  copiaColaEl.value = '';
+  qrEl.textContent = 'Gerando QR Code…';
+
+  const subtotal = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
+  const total    = subtotal + TAXA_ENTREGA;
+
+  try {
+    const res  = await fetch(`${API}/pagamentos/pix`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ valor: total })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || `Erro ${res.status}`);
+
+    pixTxid      = data.txid;
+    pixCopiaCola = data.copia_cola;
+
+    const qr = qrcode(0, 'M');
+    qr.addData(pixCopiaCola);
+    qr.make();
+    qrEl.innerHTML = qr.createImgTag(4);
+    copiaColaEl.value = pixCopiaCola;
+
+  } catch (e) {
+    console.error(e);
+    qrEl.textContent = 'Não foi possível gerar o QR Code Pix. Tente novamente.';
+  }
+}
+
+function copiarPix() {
+  if (!pixCopiaCola) return;
+  navigator.clipboard.writeText(pixCopiaCola).then(() => {
+    const btn = document.querySelector('.btn-copiar');
+    const textoOriginal = btn.textContent;
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = textoOriginal; }, 2000);
+  });
 }
 
 function toggleCart(estado) {
@@ -106,10 +157,16 @@ function abrirModal() {
   if (carrinho.length === 0) return;
   document.getElementById('modal-erro').textContent = '';
   document.getElementById('modal-overlay').classList.add('active');
+  const formaAtual = document.querySelector('input[name="forma-pagamento"]:checked').value;
+  if (formaAtual === 'pix') gerarPix();
 }
 
 function fecharModal() {
   document.getElementById('modal-overlay').classList.remove('active');
+  pixTxid      = null;
+  pixCopiaCola = null;
+  document.getElementById('pix-qrcode').textContent = 'Gerando QR Code…';
+  document.getElementById('pix-copia-cola').value = '';
 }
 
 async function confirmarPedido() {
@@ -140,6 +197,11 @@ async function confirmarPedido() {
     }
   }
 
+  if (formaPagamento === 'pix' && !pixTxid) {
+    erro.textContent = 'Aguarde o QR Code Pix ser gerado.';
+    return;
+  }
+
   const end     = `${rua}, ${numero} — ${bairro}, Rolante`;
   const subtotal = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
   const total    = subtotal + TAXA_ENTREGA;
@@ -168,7 +230,8 @@ async function confirmarPedido() {
       itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, extras: i.extras, qtd: i.qtd })),
       total,
       forma_pagamento: formaPagamento,
-      ...(pagamentoToken ? { pagamento_token: pagamentoToken } : {})
+      ...(pagamentoToken ? { pagamento_token: pagamentoToken } : {}),
+      ...(formaPagamento === 'pix' ? { pagamento_referencia: pixTxid } : {})
     };
 
     const res  = await fetch(`${API}/pedidos`, {

@@ -347,13 +347,15 @@ body {
   background: rgba(0,0,0,0.03);
 }
 
-.cartao-campos {
+.cartao-campos,
+.pix-campos {
   display: none;
   flex-direction: column;
   gap: 8px;
 }
 
-.cartao-campos.active {
+.cartao-campos.active,
+.pix-campos.active {
   display: flex;
 }
 
@@ -363,6 +365,35 @@ body {
 }
 
 .cartao-campos-linha input { flex: 1; min-width: 0; }
+
+.pix-qrcode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+  padding: 6px 0;
+  color: #888;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.pix-qrcode img {
+  width: 170px;
+  height: 170px;
+  image-rendering: pixelated;
+}
+
+.btn-copiar {
+  border: 1.5px solid var(--secondary);
+  background: none;
+  color: var(--secondary);
+  border-radius: 10px;
+  padding: 0 14px;
+  font-weight: bold;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
 
 .btn-cancelar {
   width: 100%;
