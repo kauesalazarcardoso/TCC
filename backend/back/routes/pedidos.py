@@ -3,16 +3,18 @@ import json
 import time
 from datetime import datetime
 from database import get_conn
+import mercado_pago
 
 pedidos_bp = Blueprint('pedidos', __name__)
 
 ORDEM_STATUS = ['aguardando', 'confirmado', 'a_caminho', 'entregue']
 FORMAS_PAGAMENTO = ('pix', 'cartao')
 TAXA_ENTREGA = 3.0
+STATUS_PENDENTE_PAGAMENTO = 'pendente_pagamento'
 
 _COLUNAS_PEDIDO = (
     "id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, "
-    "cartao_ultimos4, cartao_bandeira, pix_txid"
+    "cartao_ultimos4, cartao_bandeira, mp_order_id, pix_qr_base64, pix_copia_cola"
 )
 
 
@@ -28,15 +30,39 @@ def _serializar_pedido(row):
         "taxa_entrega":    row["taxa_entrega"],
         "cartao_ultimos4": row["cartao_ultimos4"],
         "cartao_bandeira": row["cartao_bandeira"],
-        "pix_txid":        row["pix_txid"],
+        "pix_qr_base64":   row["pix_qr_base64"],
+        "pix_copia_cola":  row["pix_copia_cola"],
     }
+
+
+def _sincronizar_pagamento_pendente(row):
+    """Se o pedido ainda está pendente_pagamento (Pix), consulta a Mercado
+    Pago e atualiza o status local caso já tenha sido aprovado."""
+    if row["status"] != STATUS_PENDENTE_PAGAMENTO or not row["mp_order_id"]:
+        return row
+
+    order = mercado_pago.buscar_order(row["mp_order_id"])
+    if not mercado_pago.order_aprovada(order):
+        return row
+
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE pedidos SET status = 'aguardando' WHERE id = ?", (row["id"],)
+        )
+        row = conn.execute(
+            f"SELECT {_COLUNAS_PEDIDO} FROM pedidos WHERE id = ?", (row["id"],)
+        ).fetchone()
+
+    return row
 
 
 @pedidos_bp.route("/pedidos", methods=["GET"])
 def listar_pedidos():
     with get_conn() as conn:
         rows = conn.execute(
-            f"SELECT {_COLUNAS_PEDIDO} FROM pedidos ORDER BY id DESC"
+            f"SELECT {_COLUNAS_PEDIDO} FROM pedidos "
+            "WHERE status != ? ORDER BY id DESC",
+            (STATUS_PENDENTE_PAGAMENTO,)
         ).fetchall()
     return jsonify([_serializar_pedido(r) for r in rows])
 
@@ -51,6 +77,8 @@ def buscar_pedido(pedido_id):
 
     if not row:
         return jsonify({"erro": "Pedido não encontrado"}), 404
+
+    row = _sincronizar_pagamento_pendente(row)
 
     return jsonify(_serializar_pedido(row))
 
@@ -69,40 +97,30 @@ def criar_pedido():
     if forma_pagamento not in FORMAS_PAGAMENTO:
         return jsonify({"erro": "Forma de pagamento inválida"}), 400
 
+    if not data.get("mp_order_id"):
+        return jsonify({"erro": "mp_order_id é obrigatório"}), 400
+
+    order = mercado_pago.buscar_order(data["mp_order_id"])
+    if not order or order.get("status") == "failed":
+        return jsonify({"erro": "Cobrança não encontrada ou inválida"}), 400
+
     cartao_ultimos4 = None
     cartao_bandeira = None
-    pix_txid        = None
+    pix_qr_base64   = None
+    pix_copia_cola  = None
 
     if forma_pagamento == "cartao":
-        if not data.get("pagamento_token"):
-            return jsonify({"erro": "Token de cartão é obrigatório"}), 400
+        if not mercado_pago.order_aprovada(order):
+            return jsonify({"erro": "Pagamento com cartão ainda não foi aprovado"}), 400
+        payment_method = order["transactions"]["payments"][0]["payment_method"]
+        cartao_bandeira = payment_method.get("id")
+        status_pedido = "aguardando"
 
-        with get_conn() as conn:
-            cartao = conn.execute(
-                "SELECT ultimos4, bandeira FROM cartoes WHERE token = ?",
-                (data["pagamento_token"],)
-            ).fetchone()
-
-        if not cartao:
-            return jsonify({"erro": "Token de cartão inválido"}), 400
-
-        cartao_ultimos4 = cartao["ultimos4"]
-        cartao_bandeira = cartao["bandeira"]
-
-    elif forma_pagamento == "pix":
-        if not data.get("pagamento_referencia"):
-            return jsonify({"erro": "Referência de pagamento Pix é obrigatória"}), 400
-
-        with get_conn() as conn:
-            cobranca = conn.execute(
-                "SELECT txid FROM pix_cobrancas WHERE txid = ?",
-                (data["pagamento_referencia"],)
-            ).fetchone()
-
-        if not cobranca:
-            return jsonify({"erro": "Referência de pagamento Pix inválida"}), 400
-
-        pix_txid = cobranca["txid"]
+    else:  # pix
+        payment_method = order["transactions"]["payments"][0]["payment_method"]
+        pix_qr_base64  = payment_method.get("qr_code_base64")
+        pix_copia_cola = payment_method.get("qr_code")
+        status_pedido = "aguardando" if mercado_pago.order_aprovada(order) else STATUS_PENDENTE_PAGAMENTO
 
     pedido_id = int(time.time() * 1000)
     hora      = datetime.now().strftime("%H:%M")
@@ -111,23 +129,26 @@ def criar_pedido():
         conn.execute(
             "INSERT INTO pedidos "
             "(id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, "
-            "cartao_ultimos4, cartao_bandeira, pix_txid) "
-            "VALUES (?, ?, ?, ?, 'aguardando', ?, ?, ?, ?, ?, ?)",
+            "cartao_ultimos4, cartao_bandeira, mp_order_id, pix_qr_base64, pix_copia_cola) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 pedido_id,
                 json.dumps(data["cliente"], ensure_ascii=False),
                 json.dumps(data["itens"],   ensure_ascii=False),
                 data["total"],
+                status_pedido,
                 hora,
                 forma_pagamento,
                 TAXA_ENTREGA,
                 cartao_ultimos4,
                 cartao_bandeira,
-                pix_txid,
+                data["mp_order_id"],
+                pix_qr_base64,
+                pix_copia_cola,
             )
         )
 
-    return jsonify({"id": pedido_id, "hora": hora, "status": "aguardando"}), 201
+    return jsonify({"id": pedido_id, "hora": hora, "status": status_pedido}), 201
 
 
 @pedidos_bp.route("/pedidos/<int:pedido_id>/status", methods=["PATCH"])

@@ -46,6 +46,8 @@
       <input type="text" id="input-nome" placeholder="Ex: João Silva">
       <label>Telefone</label>
       <input type="tel" id="input-tel" placeholder="Ex: (51) 99999-9999">
+      <label>E-mail</label>
+      <input type="email" id="input-email" placeholder="Ex: joao@email.com" onblur="tentarGerarPixSeEmailValido()">
       <label>Rua</label>
       <input type="text" id="input-rua" placeholder="Ex: Rua das Flores">
       <label>Número</label>
@@ -74,24 +76,11 @@
       </div>
 
       <div class="cartao-campos" id="cartao-campos">
-        <label>Nome no cartão</label>
-        <input type="text" id="input-cartao-nome" placeholder="Ex: JOAO SILVA">
-        <label>Número do cartão</label>
-        <input type="text" id="input-cartao-numero" placeholder="Ex: 4111 1111 1111 1111" inputmode="numeric">
-        <div class="cartao-campos-linha">
-          <div style="flex:1">
-            <label>Validade</label>
-            <input type="text" id="input-cartao-validade" placeholder="MM/AA">
-          </div>
-          <div style="flex:1">
-            <label>CVV</label>
-            <input type="text" id="input-cartao-cvv" placeholder="123" inputmode="numeric">
-          </div>
-        </div>
+        <div id="cardPaymentBrick_container"></div>
       </div>
 
       <div id="modal-erro" class="modal-erro"></div>
-      <button class="btn-finalizar" onclick="confirmarPedido()">Enviar Pedido →</button>
+      <button class="btn-finalizar" id="btn-enviar-pedido" onclick="confirmarPedido()">Enviar Pedido →</button>
       <button class="btn-cancelar" onclick="fecharModal()">Voltar</button>
     </div>
   </div>
@@ -120,7 +109,7 @@
     </div>
   </footer>
 
-  <script src="/js/vendor/qrcode.js"></script>
-  <script src="/js/pedido.js?v=6"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <script src="/js/pedido.js?v=7"></script>
 </body>
 </html>

@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from database import init_db
@@ -17,6 +19,11 @@ init_db()
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "mensagem": "Backend Açaí Express rodando!"})
+
+
+@app.route("/config", methods=["GET"])
+def config():
+    return jsonify({"mp_public_key": os.environ.get("MP_PUBLIC_KEY", "")})
 
 
 if __name__ == "__main__":

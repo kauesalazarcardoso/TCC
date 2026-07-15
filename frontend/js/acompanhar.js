@@ -37,6 +37,10 @@ async function fetchPedido(id) {
 }
 
 function cardHTML(pedido) {
+  if (pedido.status === 'pendente_pagamento') {
+    return cardPendentePagamentoHTML(pedido);
+  }
+
   const statusIdx = ORDEM.indexOf(pedido.status);
 
   const stepsHTML = STEPS.map((s, i) => {
@@ -86,6 +90,44 @@ function cardHTML(pedido) {
         <span>R$ ${Number(pedido.total).toFixed(2)}</span>
       </div>
     </div>`;
+}
+
+function cardPendentePagamentoHTML(pedido) {
+  return `
+    <div class="pedido-card">
+      <h2>Pedido das ${pedido.hora}</h2>
+      <div class="dados-cliente">
+        <strong>📍 ${pedido.cliente.nome}</strong><br>
+        📞 ${pedido.cliente.tel}<br>
+        🏠 ${pedido.cliente.end}
+      </div>
+      <div class="item-linha">
+        <div>🕐 Aguardando confirmação do pagamento via Pix…</div>
+      </div>
+      ${pedido.pix_qr_base64 ? `
+        <div class="pix-qrcode">
+          <img src="data:image/png;base64,${pedido.pix_qr_base64}" alt="QR Code Pix">
+        </div>
+        <div class="cartao-campos-linha">
+          <input type="text" readonly value="${pedido.pix_copia_cola || ''}" placeholder="Código Pix copia e cola">
+          <button type="button" class="btn-copiar" onclick="copiarCodigoPix(this)">Copiar</button>
+        </div>
+      ` : ''}
+      <div class="total-linha">
+        <span>Total</span>
+        <span>R$ ${Number(pedido.total).toFixed(2)}</span>
+      </div>
+    </div>`;
+}
+
+function copiarCodigoPix(botao) {
+  const input = botao.previousElementSibling;
+  if (!input || !input.value) return;
+  navigator.clipboard.writeText(input.value).then(() => {
+    const original = botao.textContent;
+    botao.textContent = 'Copiado!';
+    setTimeout(() => { botao.textContent = original; }, 2000);
+  });
 }
 
 function formatarPagamento(pedido) {

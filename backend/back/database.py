@@ -46,6 +46,9 @@ _PEDIDOS_COLUNAS_NOVAS = {
     "cartao_ultimos4": "TEXT",
     "cartao_bandeira": "TEXT",
     "pix_txid":        "TEXT",
+    "mp_order_id":     "TEXT",
+    "pix_qr_base64":   "TEXT",
+    "pix_copia_cola":  "TEXT",
 }
 
 
@@ -71,7 +74,10 @@ def init_db():
                 taxa_entrega    REAL    NOT NULL DEFAULT 3.0,
                 cartao_ultimos4 TEXT,
                 cartao_bandeira TEXT,
-                pix_txid        TEXT
+                pix_txid        TEXT,
+                mp_order_id     TEXT,
+                pix_qr_base64   TEXT,
+                pix_copia_cola  TEXT
             )
         """)
         _migrar_pedidos(conn)

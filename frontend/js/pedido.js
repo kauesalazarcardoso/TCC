@@ -3,12 +3,13 @@ const TAXA_ENTREGA = 3.0;
 
 let produtos     = [];
 let complementos = [];
+let mp           = null;
 
 let carrinho = [];
 const MAX_ACOMPANHAMENTOS = 4;
 
-let pixTxid      = null;
-let pixCopiaCola = null;
+let mpOrderId          = null;
+let cardBrickController = null;
 
 function limitarAcompanhamentos(produtoId) {
   const checkboxes = document.querySelectorAll(`.check-${produtoId}`);
@@ -71,6 +72,11 @@ function changeQty(key, delta) {
   updateUI();
 }
 
+function calcularTotal() {
+  const subtotal = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
+  return subtotal + (carrinho.length > 0 ? TAXA_ENTREGA : 0);
+}
+
 function updateUI() {
   let total = 0, qtdTotal = 0;
   document.getElementById('cart-list').innerHTML = carrinho.map(item => {
@@ -100,38 +106,49 @@ function alternarFormaPagamento() {
   const forma = document.querySelector('input[name="forma-pagamento"]:checked').value;
   document.getElementById('cartao-campos').classList.toggle('active', forma === 'cartao');
   document.getElementById('pix-campos').classList.toggle('active', forma === 'pix');
-  if (forma === 'pix') gerarPix();
+  document.getElementById('btn-enviar-pedido').style.display = forma === 'cartao' ? 'none' : 'block';
+
+  if (forma === 'pix') {
+    tentarGerarPixSeEmailValido();
+  } else {
+    montarCardBrick();
+  }
 }
 
-async function gerarPix() {
-  const qrEl = document.getElementById('pix-qrcode');
+function tentarGerarPixSeEmailValido() {
+  const formaAtual = document.querySelector('input[name="forma-pagamento"]:checked').value;
+  if (formaAtual !== 'pix') return;
+
+  const email = document.getElementById('input-email').value.trim();
+  if (!email.includes('@')) {
+    mpOrderId = null;
+    document.getElementById('pix-qrcode').textContent = 'Preencha seu e-mail acima para gerar o QR Code.';
+    document.getElementById('pix-copia-cola').value = '';
+    return;
+  }
+  gerarPix(email);
+}
+
+async function gerarPix(email) {
+  const qrEl        = document.getElementById('pix-qrcode');
   const copiaColaEl = document.getElementById('pix-copia-cola');
 
-  pixTxid      = null;
-  pixCopiaCola = null;
+  mpOrderId = null;
   copiaColaEl.value = '';
   qrEl.textContent = 'Gerando QR Code…';
-
-  const subtotal = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
-  const total    = subtotal + TAXA_ENTREGA;
 
   try {
     const res  = await fetch(`${API}/pagamentos/pix`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ valor: total })
+      body:    JSON.stringify({ valor: calcularTotal(), email })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.erro || `Erro ${res.status}`);
 
-    pixTxid      = data.txid;
-    pixCopiaCola = data.copia_cola;
-
-    const qr = qrcode(0, 'M');
-    qr.addData(pixCopiaCola);
-    qr.make();
-    qrEl.innerHTML = qr.createImgTag(4);
-    copiaColaEl.value = pixCopiaCola;
+    mpOrderId = data.mp_order_id;
+    qrEl.innerHTML = `<img src="data:image/png;base64,${data.qr_code_base64}" alt="QR Code Pix">`;
+    copiaColaEl.value = data.qr_code;
 
   } catch (e) {
     console.error(e);
@@ -140,13 +157,100 @@ async function gerarPix() {
 }
 
 function copiarPix() {
-  if (!pixCopiaCola) return;
-  navigator.clipboard.writeText(pixCopiaCola).then(() => {
+  const copiaColaEl = document.getElementById('pix-copia-cola');
+  if (!copiaColaEl.value) return;
+  navigator.clipboard.writeText(copiaColaEl.value).then(() => {
     const btn = document.querySelector('.btn-copiar');
     const textoOriginal = btn.textContent;
     btn.textContent = 'Copiado!';
     setTimeout(() => { btn.textContent = textoOriginal; }, 2000);
   });
+}
+
+async function montarCardBrick() {
+  const container = document.getElementById('cardPaymentBrick_container');
+
+  if (cardBrickController) {
+    try { await cardBrickController.unmount(); } catch (e) { /* já desmontado */ }
+    cardBrickController = null;
+  }
+  container.innerHTML = '';
+
+  const bricksBuilder = mp.bricks();
+  cardBrickController = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
+    initialization: { amount: calcularTotal() },
+    callbacks: {
+      onSubmit: (formData) => processarCartao(formData),
+      onError: (error) => {
+        console.error(error);
+        document.getElementById('modal-erro').textContent = 'Erro no formulário de cartão.';
+      }
+    }
+  });
+}
+
+function dadosClienteValidos() {
+  const nome   = document.getElementById('input-nome').value.trim();
+  const tel    = document.getElementById('input-tel').value.trim();
+  const email  = document.getElementById('input-email').value.trim();
+  const rua    = document.getElementById('input-rua').value.trim();
+  const numero = document.getElementById('input-numero').value.trim();
+  const bairro = document.getElementById('input-bairro').value.trim();
+  return { nome, tel, email, rua, numero, bairro };
+}
+
+async function processarCartao(formData) {
+  const erro = document.getElementById('modal-erro');
+  const { nome, tel, email, rua, numero, bairro } = dadosClienteValidos();
+
+  if (!nome || !tel || !email || !rua || !numero || !bairro) {
+    erro.textContent = 'Preencha todos os campos para continuar.';
+    throw new Error('Dados do cliente incompletos');
+  }
+  erro.textContent = '';
+
+  const resCartao = await fetch(`${API}/pagamentos/cartao`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      valor: calcularTotal(),
+      email,
+      token: formData.token,
+      payment_method_id: formData.payment_method_id,
+      installments: formData.installments
+    })
+  });
+  const dataCartao = await resCartao.json();
+  if (!resCartao.ok) {
+    erro.textContent = dataCartao.erro || 'Pagamento recusado.';
+    throw new Error(dataCartao.erro || 'Pagamento recusado');
+  }
+
+  const end = `${rua}, ${numero} — ${bairro}, Rolante`;
+  const payload = {
+    cliente: { nome, tel, end },
+    itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, extras: i.extras, qtd: i.qtd })),
+    total: calcularTotal(),
+    forma_pagamento: 'cartao',
+    mp_order_id: dataCartao.mp_order_id
+  };
+
+  const res  = await fetch(`${API}/pedidos`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`Erro ${res.status}`);
+
+  const data = await res.json();
+  salvarPedidoLocal(data.id);
+  window.location.href = `acompanhar.html?id=${data.id}`;
+}
+
+function salvarPedidoLocal(id) {
+  const ids = JSON.parse(localStorage.getItem('pedidoIds') || '[]');
+  if (!ids.includes(String(id))) ids.push(String(id));
+  localStorage.setItem('pedidoIds', JSON.stringify(ids));
 }
 
 function toggleCart(estado) {
@@ -157,81 +261,57 @@ function abrirModal() {
   if (carrinho.length === 0) return;
   document.getElementById('modal-erro').textContent = '';
   document.getElementById('modal-overlay').classList.add('active');
+
   const formaAtual = document.querySelector('input[name="forma-pagamento"]:checked').value;
-  if (formaAtual === 'pix') gerarPix();
+  document.getElementById('btn-enviar-pedido').style.display = formaAtual === 'cartao' ? 'none' : 'block';
+
+  if (formaAtual === 'cartao') {
+    montarCardBrick();
+  } else {
+    tentarGerarPixSeEmailValido();
+  }
 }
 
 function fecharModal() {
   document.getElementById('modal-overlay').classList.remove('active');
-  pixTxid      = null;
-  pixCopiaCola = null;
-  document.getElementById('pix-qrcode').textContent = 'Gerando QR Code…';
+  mpOrderId = null;
+  document.getElementById('pix-qrcode').textContent = 'Preencha seu e-mail acima para gerar o QR Code.';
   document.getElementById('pix-copia-cola').value = '';
+  if (cardBrickController) {
+    cardBrickController.unmount().catch(() => {});
+    cardBrickController = null;
+  }
+  document.getElementById('cardPaymentBrick_container').innerHTML = '';
 }
 
 async function confirmarPedido() {
-  const nome   = document.getElementById('input-nome').value.trim();
-  const tel    = document.getElementById('input-tel').value.trim();
-  const rua    = document.getElementById('input-rua').value.trim();
-  const numero = document.getElementById('input-numero').value.trim();
-  const bairro = document.getElementById('input-bairro').value.trim();
-  const erro   = document.getElementById('modal-erro');
-  const formaPagamento = document.querySelector('input[name="forma-pagamento"]:checked').value;
+  const erro = document.getElementById('modal-erro');
+  const { nome, tel, email, rua, numero, bairro } = dadosClienteValidos();
 
-  if (!nome || !tel || !rua || !numero || !bairro) {
+  if (!nome || !tel || !email || !rua || !numero || !bairro) {
     erro.textContent = 'Preencha todos os campos para continuar.';
     return;
   }
 
-  let cartaoDados = null;
-  if (formaPagamento === 'cartao') {
-    cartaoDados = {
-      nome_titular: document.getElementById('input-cartao-nome').value.trim(),
-      numero:       document.getElementById('input-cartao-numero').value.trim(),
-      validade:     document.getElementById('input-cartao-validade').value.trim(),
-      cvv:          document.getElementById('input-cartao-cvv').value.trim(),
-    };
-    if (!cartaoDados.nome_titular || !cartaoDados.numero || !cartaoDados.validade || !cartaoDados.cvv) {
-      erro.textContent = 'Preencha todos os dados do cartão.';
-      return;
-    }
-  }
-
-  if (formaPagamento === 'pix' && !pixTxid) {
+  if (!mpOrderId) {
     erro.textContent = 'Aguarde o QR Code Pix ser gerado.';
     return;
   }
 
-  const end     = `${rua}, ${numero} — ${bairro}, Rolante`;
-  const subtotal = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
-  const total    = subtotal + TAXA_ENTREGA;
-
-  const btnEnviar = document.querySelector('.modal .btn-finalizar');
+  const end = `${rua}, ${numero} — ${bairro}, Rolante`;
+  const btnEnviar = document.getElementById('btn-enviar-pedido');
 
   try {
     erro.textContent = '';
     btnEnviar.disabled    = true;
     btnEnviar.textContent = 'Enviando…';
 
-    let pagamentoToken = null;
-    if (formaPagamento === 'cartao') {
-      const resCartao = await fetch(`${API}/pagamentos/cartao`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(cartaoDados)
-      });
-      const dataCartao = await resCartao.json();
-      if (!resCartao.ok) throw new Error(dataCartao.erro || `Erro ${resCartao.status}`);
-      pagamentoToken = dataCartao.token;
-    }
-
     const payload = {
       cliente: { nome, tel, end },
       itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, extras: i.extras, qtd: i.qtd })),
-      total,
-      forma_pagamento: formaPagamento,
-      ...(pagamentoToken ? { pagamento_token: pagamentoToken } : {}),
-      ...(formaPagamento === 'pix' ? { pagamento_referencia: pixTxid } : {})
+      total: calcularTotal(),
+      forma_pagamento: 'pix',
+      mp_order_id: mpOrderId
     };
 
     const res  = await fetch(`${API}/pedidos`, {
@@ -243,9 +323,7 @@ async function confirmarPedido() {
     if (!res.ok) throw new Error(`Erro ${res.status}`);
 
     const data = await res.json();
-    const ids = JSON.parse(localStorage.getItem('pedidoIds') || '[]');
-    if (!ids.includes(String(data.id))) ids.push(String(data.id));
-    localStorage.setItem('pedidoIds', JSON.stringify(ids));
+    salvarPedidoLocal(data.id);
     window.location.href = `acompanhar.html?id=${data.id}`;
 
   } catch (e) {
@@ -260,13 +338,16 @@ async function confirmarPedido() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const [resProd, resComp] = await Promise.all([
+    const [resProd, resComp, resConfig] = await Promise.all([
       fetch(`${API}/cardapio`),
       fetch(`${API}/complementos`),
+      fetch(`${API}/config`),
     ]);
     produtos     = await resProd.json();
     const comps  = await resComp.json();
     complementos = comps.map(c => c.nome);
+    const config = await resConfig.json();
+    mp = new MercadoPago(config.mp_public_key, { locale: 'pt-BR' });
   } catch (e) {
     document.getElementById('produtos-grid').innerHTML =
       '<p style="text-align:center;color:#e74c3c">Erro ao carregar cardápio. Verifique a conexão.</p>';

@@ -206,3 +206,48 @@ body {
 }
 
 .sem-pedido h2 { font-family: 'Baloo 2', cursive; color: var(--primary); }
+
+.pix-qrcode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+  padding: 6px 0;
+  color: #888;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.pix-qrcode img {
+  width: 170px;
+  height: 170px;
+  image-rendering: pixelated;
+}
+
+.cartao-campos-linha {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cartao-campos-linha input {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 0.9rem;
+  font-family: 'Nunito', sans-serif;
+}
+
+.btn-copiar {
+  border: 1.5px solid var(--secondary);
+  background: none;
+  color: var(--secondary);
+  border-radius: 10px;
+  padding: 0 14px;
+  font-weight: bold;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
