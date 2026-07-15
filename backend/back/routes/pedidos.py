@@ -101,7 +101,7 @@ def criar_pedido():
         return jsonify({"erro": "mp_order_id é obrigatório"}), 400
 
     order = mercado_pago.buscar_order(data["mp_order_id"])
-    if not order or order.get("status") == "failed":
+    if not order or "transactions" not in order or order.get("status") == "failed":
         return jsonify({"erro": "Cobrança não encontrada ou inválida"}), 400
 
     cartao_ultimos4 = None

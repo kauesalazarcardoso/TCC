@@ -1,9 +1,15 @@
 import os
+import time
 import uuid
 
 import requests
 
 API_BASE = "https://api.mercadopago.com/v1"
+
+# A Mercado Pago às vezes leva alguns segundos para gerar o QR Code do Pix
+# depois de criar a order (fica em status "processing"/"in_process" até lá).
+_PIX_QR_TENTATIVAS = 10
+_PIX_QR_INTERVALO_SEGUNDOS = 2
 
 
 def _access_token():
@@ -39,7 +45,18 @@ def criar_order_pix(valor, email, external_reference):
         },
     }
     resp = requests.post(f"{API_BASE}/orders", json=body, headers=_headers(), timeout=15)
-    return _normalizar(resp.json())
+    order = _normalizar(resp.json())
+
+    for _ in range(_PIX_QR_TENTATIVAS):
+        if "errors" in order or "transactions" not in order:
+            break
+        payment_method = order["transactions"]["payments"][0].get("payment_method", {})
+        if payment_method.get("qr_code"):
+            break
+        time.sleep(_PIX_QR_INTERVALO_SEGUNDOS)
+        order = buscar_order(order["id"])
+
+    return order
 
 
 def criar_order_cartao(valor, email, token, payment_method_id, installments, external_reference):

@@ -21,6 +21,18 @@ def _validar_valor_email(data):
     return None
 
 
+def _erro_mp(order):
+    """Extrai uma mensagem de erro legível quando a resposta da Mercado Pago
+    não tem o formato esperado (ex: erro de validação sem 'transactions')."""
+    if not order:
+        return "Sem resposta da Mercado Pago"
+    if order.get("errors"):
+        return order["errors"][0].get("message", "Erro na Mercado Pago")
+    if order.get("status") == "failed" or "transactions" not in order:
+        return "Não foi possível processar o pagamento"
+    return None
+
+
 @pagamentos_bp.route("/pagamentos/pix", methods=["POST"])
 def gerar_cobranca_pix():
     data = request.get_json()
@@ -32,8 +44,9 @@ def gerar_cobranca_pix():
     external_reference = "acai-" + uuid.uuid4().hex[:12]
     order = mercado_pago.criar_order_pix(data["valor"], data["email"], external_reference)
 
-    if order.get("status") == "failed":
-        return jsonify({"erro": "Não foi possível gerar a cobrança Pix"}), 400
+    erro_mp = _erro_mp(order)
+    if erro_mp:
+        return jsonify({"erro": erro_mp}), 400
 
     payment_method = order["transactions"]["payments"][0]["payment_method"]
 
@@ -60,6 +73,10 @@ def processar_cartao():
         data["valor"], data["email"], data["token"], data["payment_method_id"],
         data["installments"], external_reference
     )
+
+    erro_mp = _erro_mp(order)
+    if erro_mp:
+        return jsonify({"aprovado": False, "erro": erro_mp}), 400
 
     if not mercado_pago.order_aprovada(order):
         motivo = order["transactions"]["payments"][0].get("status_detail", "recusado")

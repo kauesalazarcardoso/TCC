@@ -152,7 +152,9 @@ async function gerarPix(email) {
 
   } catch (e) {
     console.error(e);
-    qrEl.textContent = 'Não foi possível gerar o QR Code Pix. Tente novamente.';
+    qrEl.textContent = e.message && e.message !== 'Failed to fetch'
+      ? e.message
+      : 'Não foi possível gerar o QR Code Pix. Tente novamente.';
   }
 }
 
@@ -170,23 +172,37 @@ function copiarPix() {
 async function montarCardBrick() {
   const container = document.getElementById('cardPaymentBrick_container');
 
+  if (!mp) {
+    container.textContent = 'Erro: SDK da Mercado Pago não carregou. Recarregue a página.';
+    return;
+  }
+
   if (cardBrickController) {
     try { await cardBrickController.unmount(); } catch (e) { /* já desmontado */ }
     cardBrickController = null;
   }
-  container.innerHTML = '';
+  container.innerHTML = '<p class="brick-loading">Carregando formulário de cartão…</p>';
 
-  const bricksBuilder = mp.bricks();
-  cardBrickController = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
-    initialization: { amount: calcularTotal() },
-    callbacks: {
-      onSubmit: (formData) => processarCartao(formData),
-      onError: (error) => {
-        console.error(error);
-        document.getElementById('modal-erro').textContent = 'Erro no formulário de cartão.';
+  try {
+    const bricksBuilder = mp.bricks();
+    cardBrickController = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
+      initialization: { amount: calcularTotal() },
+      callbacks: {
+        onReady: () => {
+          const aviso = container.querySelector('.brick-loading');
+          if (aviso) aviso.remove();
+        },
+        onSubmit: (formData) => processarCartao(formData),
+        onError: (error) => {
+          console.error('Card Brick onError:', error);
+          document.getElementById('modal-erro').textContent = 'Erro no formulário de cartão.';
+        }
       }
-    }
-  });
+    });
+  } catch (e) {
+    console.error('Falha ao montar Card Brick:', e);
+    container.textContent = 'Não foi possível carregar o formulário de cartão: ' + (e.message || e);
+  }
 }
 
 function dadosClienteValidos() {
@@ -338,21 +354,29 @@ async function confirmarPedido() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const [resProd, resComp, resConfig] = await Promise.all([
+    const [resProd, resComp] = await Promise.all([
       fetch(`${API}/cardapio`),
       fetch(`${API}/complementos`),
-      fetch(`${API}/config`),
     ]);
     produtos     = await resProd.json();
     const comps  = await resComp.json();
     complementos = comps.map(c => c.nome);
-    const config = await resConfig.json();
-    mp = new MercadoPago(config.mp_public_key, { locale: 'pt-BR' });
   } catch (e) {
+    console.error('Erro ao carregar cardápio/complementos:', e);
     document.getElementById('produtos-grid').innerHTML =
       '<p style="text-align:center;color:#e74c3c">Erro ao carregar cardápio. Verifique a conexão.</p>';
     return;
   }
+
+  try {
+    const resConfig = await fetch(`${API}/config`);
+    const config    = await resConfig.json();
+    if (typeof MercadoPago === 'undefined') throw new Error('SDK da Mercado Pago não carregou (verifique sua conexão)');
+    mp = new MercadoPago(config.mp_public_key, { locale: 'pt-BR' });
+  } catch (e) {
+    console.error('Erro ao inicializar Mercado Pago:', e);
+  }
+
   renderVitrine();
   const ids = JSON.parse(localStorage.getItem('pedidoIds') || '[]');
   if (ids.length > 0) {
