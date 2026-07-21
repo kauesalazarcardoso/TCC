@@ -1,5 +1,7 @@
 
-const API = 'https://acai-express-backend.onrender.com';
+const API = location.hostname === 'localhost'
+  ? 'http://localhost:5000'
+  : 'https://acai-express-backend.onrender.com';
 
 const ORDEM  = ['aguardando', 'confirmado', 'a_caminho', 'entregue'];
 const LABELS = {
