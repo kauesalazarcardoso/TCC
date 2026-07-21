@@ -1,4 +1,4 @@
-const API = 'http://localhost:5000';
+const API = 'https://acai-express-backend.onrender.com';
 const TAXA_ENTREGA = 3.0;
 
 let produtos     = [];

@@ -1,4 +1,4 @@
-const AUTH_API = 'http://localhost:5000';
+const AUTH_API = 'https://acai-express-backend.onrender.com';
 
 function getToken() {
   return localStorage.getItem('authToken');

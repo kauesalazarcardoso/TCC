@@ -1,4 +1,4 @@
-const API = 'http://localhost:5000';
+const API = 'https://acai-express-backend.onrender.com';
 
 let _itensMap = {};
 
