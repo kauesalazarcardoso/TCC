@@ -6,4 +6,4 @@ COPY . .
 
 RUN pip install -r requirements.txt
 
-CMD ["python", "back/app.py"]
+CMD gunicorn --chdir back --bind 0.0.0.0:${PORT:-5000} app:app
