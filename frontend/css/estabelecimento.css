@@ -160,6 +160,12 @@ body {
   cursor: pointer;
   font-size: 0.9rem;
   transition: opacity 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .btn-acao:hover { opacity: 0.88; transform: translateY(-1px); }
@@ -168,3 +174,4 @@ body {
 .btn-confirmar { background: var(--azul);      color: white; }
 .btn-caminho   { background: var(--secondary); color: white; }
 .btn-entregue  { background: var(--accent);    color: white; }
+.btn-whatsapp  { background: #25d366;          color: white; }

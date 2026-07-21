@@ -46,9 +46,10 @@ async function adicionarItem() {
   const erro  = document.getElementById('erro-form');
   if (!nome || isNaN(preco) || preco <= 0) { erro.textContent = 'Preencha nome e preço válidos.'; return; }
   const res = await fetch(`${API}/cardapio`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ nome, preco }),
   });
+  if (tratarRespostaAuth(res)) return;
   if (res.ok) {
     erro.textContent = '';
     document.getElementById('novo-nome').value  = '';
@@ -61,7 +62,8 @@ async function adicionarItem() {
 
 async function removerItem(id) {
   if (!confirm('Remover este item do cardápio?')) return;
-  await fetch(`${API}/cardapio/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${API}/cardapio/${id}`, { method: 'DELETE', headers: authHeaders() });
+  if (tratarRespostaAuth(res)) return;
   carregarCardapio();
 }
 
@@ -86,9 +88,10 @@ async function salvarEdicao() {
   const erro  = document.getElementById('erro-modal');
   if (!nome || isNaN(preco) || preco <= 0) { erro.textContent = 'Preencha nome e preço válidos.'; return; }
   const res = await fetch(`${API}/cardapio/${id}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ nome, preco }),
   });
+  if (tratarRespostaAuth(res)) return;
   if (res.ok) { fecharModal(); carregarCardapio(); }
   else { erro.textContent = (await res.json()).erro || 'Erro ao salvar.'; }
 }
@@ -125,9 +128,10 @@ async function adicionarComplemento() {
   const erro = document.getElementById('erro-complemento');
   if (!nome) { erro.textContent = 'Digite o nome do complemento.'; return; }
   const res = await fetch(`${API}/complementos`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ nome }),
   });
+  if (tratarRespostaAuth(res)) return;
   if (res.ok) {
     erro.textContent = '';
     document.getElementById('novo-complemento').value = '';
@@ -139,7 +143,8 @@ async function adicionarComplemento() {
 
 async function removerComplemento(id) {
   if (!confirm('Remover este complemento?')) return;
-  await fetch(`${API}/complementos/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${API}/complementos/${id}`, { method: 'DELETE', headers: authHeaders() });
+  if (tratarRespostaAuth(res)) return;
   carregarComplementos();
 }
 

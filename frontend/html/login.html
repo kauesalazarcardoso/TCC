@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Açaí Express</title>
+  <link rel="stylesheet" href="../css/login.css">
+</head>
+<body>
+  <form class="login-box" id="form-login">
+    <h1>🔒 Painel do Estabelecimento</h1>
+    <p class="sub">Acesso restrito ao proprietário</p>
+
+    <label>Usuário</label>
+    <input type="text" id="input-usuario" autocomplete="username" required>
+
+    <label>Senha</label>
+    <input type="password" id="input-senha" autocomplete="current-password" required>
+
+    <p id="login-erro" class="login-erro"></p>
+
+    <button type="submit" class="btn-entrar" id="btn-entrar">Entrar</button>
+  </form>
+
+  <script src="../js/auth.js"></script>
+  <script src="../js/login.js"></script>
+</body>
+</html>

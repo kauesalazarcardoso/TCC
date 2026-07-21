@@ -42,7 +42,9 @@ def gerar_cobranca_pix():
         return jsonify({"erro": erro}), 400
 
     external_reference = "acai-" + uuid.uuid4().hex[:12]
-    order = mercado_pago.criar_order_pix(data["valor"], data["email"], external_reference)
+    order = mercado_pago.criar_order_pix(
+        data["valor"], data["email"], external_reference, nome=data.get("nome")
+    )
 
     erro_mp = _erro_mp(order)
     if erro_mp:
@@ -71,7 +73,7 @@ def processar_cartao():
     external_reference = "acai-" + uuid.uuid4().hex[:12]
     order = mercado_pago.criar_order_cartao(
         data["valor"], data["email"], data["token"], data["payment_method_id"],
-        data["installments"], external_reference
+        data["installments"], external_reference, nome=data.get("nome")
     )
 
     erro_mp = _erro_mp(order)

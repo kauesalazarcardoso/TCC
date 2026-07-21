@@ -28,13 +28,26 @@ def _normalizar(resp_json):
     return resp_json.get("data", resp_json)
 
 
-def criar_order_pix(valor, email, external_reference):
+def _payer(email, nome=None):
+    """Monta o payer da order. Em sandbox, o primeiro nome do pagador determina
+    o resultado simulado (ex: 'APRO' aprova automaticamente, 'FUND' recusa por
+    saldo insuficiente) — por isso vale sempre repassar o nome informado."""
+    payer = {"email": email}
+    if nome:
+        primeiro, *resto = nome.strip().split(None, 1)
+        payer["first_name"] = primeiro
+        if resto:
+            payer["last_name"] = resto[0]
+    return payer
+
+
+def criar_order_pix(valor, email, external_reference, nome=None):
     body = {
         "type": "online",
         "processing_mode": "automatic",
         "total_amount": f"{valor:.2f}",
         "external_reference": external_reference,
-        "payer": {"email": email},
+        "payer": _payer(email, nome),
         "transactions": {
             "payments": [
                 {
@@ -59,13 +72,13 @@ def criar_order_pix(valor, email, external_reference):
     return order
 
 
-def criar_order_cartao(valor, email, token, payment_method_id, installments, external_reference):
+def criar_order_cartao(valor, email, token, payment_method_id, installments, external_reference, nome=None):
     body = {
         "type": "online",
         "processing_mode": "automatic",
         "total_amount": f"{valor:.2f}",
         "external_reference": external_reference,
-        "payer": {"email": email},
+        "payer": _payer(email, nome),
         "transactions": {
             "payments": [
                 {

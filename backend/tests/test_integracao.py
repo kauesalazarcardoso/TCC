@@ -96,10 +96,10 @@ def test_criar_pedido(client, monkeypatch):
     assert data["status"] == "aguardando"
 
 
-def test_listar_pedidos(client, monkeypatch):
+def test_listar_pedidos(client, monkeypatch, auth_headers):
     _criar_pedido_pix_aprovado(client, monkeypatch, valor=15.0)
 
-    response = client.get("/pedidos")
+    response = client.get("/pedidos", headers=auth_headers)
 
     assert response.status_code == 200
 
@@ -108,11 +108,11 @@ def test_listar_pedidos(client, monkeypatch):
     assert isinstance(data, list)
 
 
-def test_avancar_status(client, monkeypatch):
+def test_avancar_status(client, monkeypatch, auth_headers):
     criar = _criar_pedido_pix_aprovado(client, monkeypatch, valor=25.0)
     pedido_id = json.loads(criar.data)["id"]
 
-    response = client.patch(f"/pedidos/{pedido_id}/status")
+    response = client.patch(f"/pedidos/{pedido_id}/status", headers=auth_headers)
 
     assert response.status_code == 200
 
@@ -121,9 +121,9 @@ def test_avancar_status(client, monkeypatch):
     assert data["status"] == "confirmado"
 
 
-def test_limpar_entregues(client):
+def test_limpar_entregues(client, auth_headers):
 
-    response = client.delete("/pedidos/entregues")
+    response = client.delete("/pedidos/entregues", headers=auth_headers)
 
     assert response.status_code == 200
 
@@ -200,6 +200,56 @@ def test_criar_pedido_mp_order_id_invalido(client, monkeypatch):
     assert response.status_code == 400
 
 
+def test_criar_pedido_dinheiro_nao_exige_mp_order_id(client):
+    pedido = {
+        "cliente": {"nome": "Kauê"},
+        "itens": [{"nome": "Açaí", "quantidade": 1}],
+        "total": 20,
+        "forma_pagamento": "dinheiro"
+    }
+
+    response = client.post("/pedidos", json=pedido)
+
+    assert response.status_code == 201
+
+    data = json.loads(response.data)
+    assert data["status"] == "aguardando"
+
+
+def test_criar_pedido_dinheiro_com_troco(client):
+    pedido = {
+        "cliente": {"nome": "Kauê"},
+        "itens": [{"nome": "Açaí", "quantidade": 1}],
+        "total": 20,
+        "forma_pagamento": "dinheiro",
+        "troco_para": 50
+    }
+
+    criar = client.post("/pedidos", json=pedido)
+    assert criar.status_code == 201
+    pedido_id = json.loads(criar.data)["id"]
+
+    busca = client.get(f"/pedidos/{pedido_id}")
+    dados = json.loads(busca.data)
+
+    assert dados["forma_pagamento"] == "dinheiro"
+    assert dados["troco_para"] == 50
+
+
+def test_criar_pedido_dinheiro_troco_menor_que_total_invalido(client):
+    pedido = {
+        "cliente": {"nome": "Kauê"},
+        "itens": [{"nome": "Açaí", "quantidade": 1}],
+        "total": 20,
+        "forma_pagamento": "dinheiro",
+        "troco_para": 10
+    }
+
+    response = client.post("/pedidos", json=pedido)
+
+    assert response.status_code == 400
+
+
 def test_gerar_pix_sucesso(client, monkeypatch):
     _mockar_pix_pendente(monkeypatch, valor=21.0)
 
@@ -228,7 +278,32 @@ def test_gerar_pix_sem_email(client):
     assert response.status_code == 400
 
 
-def test_criar_pedido_pix_pendente_nao_aparece_em_listar(client, monkeypatch):
+def test_gerar_pix_repassa_nome_para_simulacao_sandbox(client, monkeypatch):
+    """O primeiro nome do pagador é o que a Mercado Pago usa em sandbox para
+    decidir o resultado simulado (ex: 'APRO' aprova, 'FUND' recusa)."""
+    order = _fake_order(
+        "ORDTST_PIX_NOME", "action_required", "waiting_transfer",
+        payment_method={"id": "pix", "type": "bank_transfer",
+                         "qr_code": "copia-cola", "qr_code_base64": "base64img"},
+    )
+    chamadas = {}
+
+    def _fake_criar_order_pix(valor, email, external_reference, nome=None):
+        chamadas["nome"] = nome
+        return order
+
+    monkeypatch.setattr(mercado_pago, "criar_order_pix", _fake_criar_order_pix)
+
+    response = client.post(
+        "/pagamentos/pix",
+        json={"valor": 20.0, "email": "test_user_br@testuser.com", "nome": "APRO"}
+    )
+
+    assert response.status_code == 201
+    assert chamadas["nome"] == "APRO"
+
+
+def test_criar_pedido_pix_pendente_nao_aparece_em_listar(client, monkeypatch, auth_headers):
     _mockar_pix_pendente(monkeypatch, valor=20.0)
 
     resp_pix = client.post("/pagamentos/pix", json={"valor": 20.0, "email": "comprador@testuser.com"})
@@ -249,7 +324,7 @@ def test_criar_pedido_pix_pendente_nao_aparece_em_listar(client, monkeypatch):
 
     pedido_id = dados_criacao["id"]
 
-    listagem = client.get("/pedidos")
+    listagem = client.get("/pedidos", headers=auth_headers)
     ids_listados = [p["id"] for p in json.loads(listagem.data)]
     assert pedido_id not in ids_listados
 
@@ -260,7 +335,7 @@ def test_criar_pedido_pix_pendente_nao_aparece_em_listar(client, monkeypatch):
     assert dados_busca["pix_copia_cola"]
 
 
-def test_pedido_pix_atualiza_status_quando_pagamento_confirma(client, monkeypatch):
+def test_pedido_pix_atualiza_status_quando_pagamento_confirma(client, monkeypatch, auth_headers):
     _mockar_pix_pendente(monkeypatch, order_id="ORDTST_PIX_CONFIRMA", valor=20.0)
 
     resp_pix = client.post("/pagamentos/pix", json={"valor": 20.0, "email": "comprador@testuser.com"})
@@ -284,7 +359,7 @@ def test_pedido_pix_atualiza_status_quando_pagamento_confirma(client, monkeypatc
     dados = json.loads(busca.data)
     assert dados["status"] == "aguardando"
 
-    listagem = client.get("/pedidos")
+    listagem = client.get("/pedidos", headers=auth_headers)
     ids_listados = [p["id"] for p in json.loads(listagem.data)]
     assert pedido_id in ids_listados
 

@@ -1,8 +1,12 @@
 import sqlite3
 import os
 from contextlib import contextmanager
+from werkzeug.security import generate_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', '..', 'db', 'pedidos.db')
+
+OWNER_USUARIO_PADRAO = "admin"
+OWNER_SENHA_PADRAO = "acai2026"
 
 _ITENS_INICIAIS = [
     ("Copo 200ml Econômico",   10.00),
@@ -49,6 +53,7 @@ _PEDIDOS_COLUNAS_NOVAS = {
     "mp_order_id":     "TEXT",
     "pix_qr_base64":   "TEXT",
     "pix_copia_cola":  "TEXT",
+    "troco_para":      "REAL",
 }
 
 
@@ -77,7 +82,8 @@ def init_db():
                 pix_txid        TEXT,
                 mp_order_id     TEXT,
                 pix_qr_base64   TEXT,
-                pix_copia_cola  TEXT
+                pix_copia_cola  TEXT,
+                troco_para      REAL
             )
         """)
         _migrar_pedidos(conn)
@@ -114,6 +120,27 @@ def init_db():
                 criado_em  TEXT    NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario    TEXT    NOT NULL UNIQUE,
+                senha_hash TEXT    NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS sessoes (
+                token     TEXT    PRIMARY KEY,
+                usuario   TEXT    NOT NULL,
+                criado_em TEXT    NOT NULL
+            )
+        """)
+        if conn.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 0:
+            usuario = os.environ.get("OWNER_USUARIO", OWNER_USUARIO_PADRAO)
+            senha = os.environ.get("OWNER_SENHA", OWNER_SENHA_PADRAO)
+            conn.execute(
+                "INSERT INTO usuarios (usuario, senha_hash) VALUES (?, ?)",
+                (usuario, generate_password_hash(senha))
+            )
         if conn.execute("SELECT COUNT(*) FROM cardapio").fetchone()[0] == 0:
             conn.executemany(
                 "INSERT INTO cardapio (nome, preco) VALUES (?, ?)",
@@ -124,4 +151,4 @@ def init_db():
                 "INSERT INTO complementos (nome) VALUES (?)",
                 [(n,) for n in _COMPLEMENTOS_INICIAIS]
             )
-    print("✅ Banco SQLite inicializado!")
+    print("Banco SQLite inicializado!")

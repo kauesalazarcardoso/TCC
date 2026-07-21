@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from database import get_conn
+from routes.auth import login_required
 
 cardapio_bp = Blueprint('cardapio', __name__)
 
@@ -12,6 +13,7 @@ def listar_cardapio():
 
 
 @cardapio_bp.route("/cardapio", methods=["POST"])
+@login_required
 def criar_item():
     data = request.get_json()
     if not data or not all(k in data for k in ("nome", "preco")):
@@ -28,6 +30,7 @@ def criar_item():
 
 
 @cardapio_bp.route("/cardapio/<int:item_id>", methods=["PUT"])
+@login_required
 def editar_item(item_id):
     data = request.get_json()
     if not data or not all(k in data for k in ("nome", "preco")):
@@ -48,6 +51,7 @@ def editar_item(item_id):
 
 
 @cardapio_bp.route("/cardapio/<int:item_id>", methods=["DELETE"])
+@login_required
 def remover_item(item_id):
     with get_conn() as conn:
         cur = conn.execute("DELETE FROM cardapio WHERE id = ?", (item_id,))
@@ -64,6 +68,7 @@ def listar_complementos():
 
 
 @cardapio_bp.route("/complementos", methods=["POST"])
+@login_required
 def criar_complemento():
     data = request.get_json()
     if not data or not data.get("nome", "").strip():
@@ -78,6 +83,7 @@ def criar_complemento():
 
 
 @cardapio_bp.route("/complementos/<int:comp_id>", methods=["DELETE"])
+@login_required
 def remover_complemento(comp_id):
     with get_conn() as conn:
         cur = conn.execute("DELETE FROM complementos WHERE id = ?", (comp_id,))

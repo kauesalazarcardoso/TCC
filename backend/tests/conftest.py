@@ -5,7 +5,7 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'back')))
 
 from app import app as flask_app
-from database import init_db
+from database import init_db, OWNER_USUARIO_PADRAO, OWNER_SENHA_PADRAO
 import database
 
 
@@ -16,3 +16,13 @@ def client(monkeypatch, tmp_path):
     init_db()
     with flask_app.test_client() as client:
         yield client
+
+
+@pytest.fixture
+def auth_headers(client):
+    resp = client.post("/login", json={
+        "usuario": OWNER_USUARIO_PADRAO,
+        "senha": OWNER_SENHA_PADRAO,
+    })
+    token = resp.get_json()["token"]
+    return {"Authorization": f"Bearer {token}"}

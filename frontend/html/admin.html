@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — Açaí Express</title>
   <link rel="stylesheet" href="../css/admin.css">
+  <script>
+    if (!localStorage.getItem('authToken')) {
+      location.href = 'login.html?next=admin.html';
+    }
+  </script>
 </head>
 <body>
-  <header class="header">
+  <header class="header" style="display:flex;justify-content:space-between;align-items:center">
     <h1>⚙️ Painel Admin — Açaí Express</h1>
+    <button onclick="logout()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:8px 16px;border-radius:8px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:0.85rem">Sair</button>
   </header>
 
   <div class="container">
@@ -59,6 +65,7 @@
     </div>
   </div>
 
+  <script src="../js/auth.js"></script>
   <script src="../js/admin.js"></script>
 </body>
 </html>

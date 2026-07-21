@@ -13,13 +13,48 @@ function formatarPagamento(pedido) {
   if (pedido.forma_pagamento === 'cartao') {
     return `Cartão •••• ${pedido.cartao_ultimos4 || '----'} (${pedido.cartao_bandeira || 'Outro'})`;
   }
+  if (pedido.forma_pagamento === 'dinheiro') {
+    return pedido.troco_para
+      ? `Dinheiro (troco para R$ ${Number(pedido.troco_para).toFixed(2)})`
+      : 'Dinheiro (sem troco)';
+  }
   return 'Pix';
+}
+
+// ── NOTIFICAÇÃO WHATSAPP (link wa.me, envio é manual) ─────────
+// OBS: o link wa.me corrompe emoji no texto pré-preenchido (confirmado em teste
+// manual — mesmo emoji simples como ✅ vira "�" na conversa). Por isso as
+// mensagens abaixo usam só texto puro, sem emoji.
+const MENSAGENS_WHATSAPP = {
+  aguardando: (p, id, nome) => `Oi ${nome}! Recebemos seu pedido #${id} na Açaí Express. Já vamos confirmar!`,
+  confirmado: (p, id, nome) => `Oi ${nome}! Seu pedido #${id} foi *confirmado* e já está sendo preparado!`,
+  a_caminho:  (p, id, nome) => `Oi ${nome}! Seu pedido #${id} saiu para entrega. Chega já já!`,
+  entregue:   (p, id, nome) => `Oi ${nome}! Seu pedido #${id} foi *entregue*. Bom apetite! Obrigado por pedir na Açaí Express.`,
+};
+
+function normalizarTelefoneBR(tel) {
+  const digitos = (tel || '').replace(/\D/g, '');
+  if (!digitos) return null;
+  return digitos.startsWith('55') ? digitos : `55${digitos}`;
+}
+
+function linkWhatsapp(pedido) {
+  const gerarMsg = MENSAGENS_WHATSAPP[pedido.status];
+  const numero   = normalizarTelefoneBR(pedido.cliente.tel);
+  if (!gerarMsg || !numero) return null;
+
+  const idCurto     = String(pedido.id).slice(-5);
+  const primeiroNome = (pedido.cliente.nome || '').trim().split(/\s+/)[0] || 'cliente';
+  const mensagem    = gerarMsg(pedido, idCurto, primeiroNome);
+
+  return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 }
 
 // ── BUSCA TODOS OS PEDIDOS ────────────────────────────────────
 async function fetchPedidos() {
   try {
-    const res = await fetch(`${API}/pedidos`);
+    const res = await fetch(`${API}/pedidos`, { headers: authHeaders() });
+    if (tratarRespostaAuth(res)) return null;
     if (!res.ok) throw new Error(`Erro ${res.status}`);
     return await res.json();   // espera array de pedidos
   } catch (e) {
@@ -33,8 +68,9 @@ async function avancarStatus(id) {
   try {
     const res = await fetch(`${API}/pedidos/${id}/status`, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...authHeaders() }
     });
+    if (tratarRespostaAuth(res)) return;
     if (!res.ok) throw new Error(`Erro ${res.status}`);
     render();
   } catch (e) {
@@ -46,7 +82,11 @@ async function avancarStatus(id) {
 // ── LIMPAR ENTREGUES ──────────────────────────────────────────
 async function limparEntregues() {
   try {
-    const res = await fetch(`${API}/pedidos/entregues`, { method: 'DELETE' });
+    const res = await fetch(`${API}/pedidos/entregues`, {
+      method:  'DELETE',
+      headers: authHeaders()
+    });
+    if (tratarRespostaAuth(res)) return;
     if (!res.ok) throw new Error(`Erro ${res.status}`);
     render();
   } catch (e) {
@@ -117,6 +157,7 @@ async function render() {
 
     // Exibe apenas os últimos 5 dígitos do ID para leitura rápida
     const idCurto = String(p.id).slice(-5);
+    const linkWA  = linkWhatsapp(p);
 
     return `
       <div class="pedido-card ${p.status}">
@@ -154,6 +195,10 @@ async function render() {
             ${!podeAvancar ? 'disabled' : ''}>
             ${proximoLabel}
           </button>
+          ${linkWA ? `
+            <a class="btn-acao btn-whatsapp" href="${linkWA}" target="_blank" rel="noopener">
+              📲 Avisar no WhatsApp
+            </a>` : ''}
         </div>
       </div>`;
   }).join('');

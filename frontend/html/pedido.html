@@ -49,7 +49,8 @@
       <label>E-mail</label>
       <input type="email" id="input-email" placeholder="Ex: joao@email.com" onblur="tentarGerarPixSeEmailValido()">
       <small id="aviso-sandbox" style="color:#888;font-size:0.75rem;margin-top:-4px;">
-        Ambiente de teste: use um e-mail terminado em <code>@testuser.com</code> (conta de teste da Mercado Pago).
+        Ambiente de teste: use o e-mail <code>test_user_br@testuser.com</code> e o nome <code>APRO</code>
+        (aprova automaticamente). Para simular recusa, use <code>FUND</code>, <code>CALL</code> ou <code>SECU</code> no nome.
       </small>
       <label>Rua</label>
       <input type="text" id="input-rua" placeholder="Ex: Rua das Flores">
@@ -68,6 +69,9 @@
         <label class="pagamento-opcao">
           <input type="radio" name="forma-pagamento" value="cartao" onchange="alternarFormaPagamento()"> Cartão de Crédito
         </label>
+        <label class="pagamento-opcao">
+          <input type="radio" name="forma-pagamento" value="dinheiro" onchange="alternarFormaPagamento()"> Dinheiro
+        </label>
       </div>
 
       <div class="pix-campos active" id="pix-campos">
@@ -80,6 +84,16 @@
 
       <div class="cartao-campos" id="cartao-campos">
         <div id="cardPaymentBrick_container"></div>
+      </div>
+
+      <div class="dinheiro-campos" id="dinheiro-campos">
+        <label class="opcao-item" style="margin:4px 0">
+          <input type="checkbox" id="input-precisa-troco" onchange="alternarTroco()"> Preciso de troco
+        </label>
+        <div id="troco-wrapper" style="display:none">
+          <label>Troco para quanto?</label>
+          <input type="number" id="input-troco-para" placeholder="Ex: 50" step="0.01" min="0">
+        </div>
       </div>
 
       <div id="modal-erro" class="modal-erro"></div>
@@ -113,6 +127,6 @@
   </footer>
 
   <script src="https://sdk.mercadopago.com/js/v2"></script>
-  <script src="/js/pedido.js?v=10"></script>
+  <script src="/js/pedido.js?v=11"></script>
 </body>
 </html>

@@ -3,18 +3,19 @@ import json
 import time
 from datetime import datetime
 from database import get_conn
+from routes.auth import login_required
 import mercado_pago
 
 pedidos_bp = Blueprint('pedidos', __name__)
 
 ORDEM_STATUS = ['aguardando', 'confirmado', 'a_caminho', 'entregue']
-FORMAS_PAGAMENTO = ('pix', 'cartao')
+FORMAS_PAGAMENTO = ('pix', 'cartao', 'dinheiro')
 TAXA_ENTREGA = 3.0
 STATUS_PENDENTE_PAGAMENTO = 'pendente_pagamento'
 
 _COLUNAS_PEDIDO = (
     "id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, "
-    "cartao_ultimos4, cartao_bandeira, mp_order_id, pix_qr_base64, pix_copia_cola"
+    "cartao_ultimos4, cartao_bandeira, mp_order_id, pix_qr_base64, pix_copia_cola, troco_para"
 )
 
 
@@ -32,6 +33,7 @@ def _serializar_pedido(row):
         "cartao_bandeira": row["cartao_bandeira"],
         "pix_qr_base64":   row["pix_qr_base64"],
         "pix_copia_cola":  row["pix_copia_cola"],
+        "troco_para":      row["troco_para"],
     }
 
 
@@ -57,6 +59,7 @@ def _sincronizar_pagamento_pendente(row):
 
 
 @pedidos_bp.route("/pedidos", methods=["GET"])
+@login_required
 def listar_pedidos():
     with get_conn() as conn:
         rows = conn.execute(
@@ -97,30 +100,43 @@ def criar_pedido():
     if forma_pagamento not in FORMAS_PAGAMENTO:
         return jsonify({"erro": "Forma de pagamento inválida"}), 400
 
-    if not data.get("mp_order_id"):
-        return jsonify({"erro": "mp_order_id é obrigatório"}), 400
-
-    order = mercado_pago.buscar_order(data["mp_order_id"])
-    if not order or "transactions" not in order or order.get("status") == "failed":
-        return jsonify({"erro": "Cobrança não encontrada ou inválida"}), 400
-
     cartao_ultimos4 = None
     cartao_bandeira = None
     pix_qr_base64   = None
     pix_copia_cola  = None
+    mp_order_id     = None
+    troco_para      = None
 
-    if forma_pagamento == "cartao":
-        if not mercado_pago.order_aprovada(order):
-            return jsonify({"erro": "Pagamento com cartão ainda não foi aprovado"}), 400
-        payment_method = order["transactions"]["payments"][0]["payment_method"]
-        cartao_bandeira = payment_method.get("id")
+    if forma_pagamento == "dinheiro":
+        if data.get("troco_para") is not None:
+            if not isinstance(data["troco_para"], (int, float)) or data["troco_para"] < data["total"]:
+                return jsonify({"erro": "Valor para troco inválido"}), 400
+            troco_para = data["troco_para"]
         status_pedido = "aguardando"
 
-    else:  # pix
-        payment_method = order["transactions"]["payments"][0]["payment_method"]
-        pix_qr_base64  = payment_method.get("qr_code_base64")
-        pix_copia_cola = payment_method.get("qr_code")
-        status_pedido = "aguardando" if mercado_pago.order_aprovada(order) else STATUS_PENDENTE_PAGAMENTO
+    else:
+        if not data.get("mp_order_id"):
+            return jsonify({"erro": "mp_order_id é obrigatório"}), 400
+
+        mp_order_id = data["mp_order_id"]
+        order = mercado_pago.buscar_order(mp_order_id)
+        if not order or "transactions" not in order or order.get("status") == "failed":
+            return jsonify({"erro": "Cobrança não encontrada ou inválida"}), 400
+
+        if forma_pagamento == "cartao":
+            if not mercado_pago.order_aprovada(order):
+                return jsonify({"erro": "Pagamento com cartão ainda não foi aprovado"}), 400
+            payment = order["transactions"]["payments"][0]
+            payment_method = payment["payment_method"]
+            cartao_bandeira = payment_method.get("id")
+            cartao_ultimos4 = (payment.get("card") or payment_method.get("card") or {}).get("last_four_digits")
+            status_pedido = "aguardando"
+
+        else:  # pix
+            payment_method = order["transactions"]["payments"][0]["payment_method"]
+            pix_qr_base64  = payment_method.get("qr_code_base64")
+            pix_copia_cola = payment_method.get("qr_code")
+            status_pedido = "aguardando" if mercado_pago.order_aprovada(order) else STATUS_PENDENTE_PAGAMENTO
 
     pedido_id = int(time.time() * 1000)
     hora      = datetime.now().strftime("%H:%M")
@@ -129,8 +145,8 @@ def criar_pedido():
         conn.execute(
             "INSERT INTO pedidos "
             "(id, cliente, itens, total, status, hora, forma_pagamento, taxa_entrega, "
-            "cartao_ultimos4, cartao_bandeira, mp_order_id, pix_qr_base64, pix_copia_cola) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "cartao_ultimos4, cartao_bandeira, mp_order_id, pix_qr_base64, pix_copia_cola, troco_para) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 pedido_id,
                 json.dumps(data["cliente"], ensure_ascii=False),
@@ -142,9 +158,10 @@ def criar_pedido():
                 TAXA_ENTREGA,
                 cartao_ultimos4,
                 cartao_bandeira,
-                data["mp_order_id"],
+                mp_order_id,
                 pix_qr_base64,
                 pix_copia_cola,
+                troco_para,
             )
         )
 
@@ -152,6 +169,7 @@ def criar_pedido():
 
 
 @pedidos_bp.route("/pedidos/<int:pedido_id>/status", methods=["PATCH"])
+@login_required
 def avancar_status(pedido_id):
     with get_conn() as conn:
         row = conn.execute(
@@ -178,6 +196,7 @@ def avancar_status(pedido_id):
 
 
 @pedidos_bp.route("/pedidos/entregues", methods=["DELETE"])
+@login_required
 def limpar_entregues():
     with get_conn() as conn:
         cur = conn.execute("DELETE FROM pedidos WHERE status = 'entregue'")

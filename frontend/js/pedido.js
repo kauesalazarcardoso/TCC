@@ -106,13 +106,20 @@ function alternarFormaPagamento() {
   const forma = document.querySelector('input[name="forma-pagamento"]:checked').value;
   document.getElementById('cartao-campos').classList.toggle('active', forma === 'cartao');
   document.getElementById('pix-campos').classList.toggle('active', forma === 'pix');
+  document.getElementById('dinheiro-campos').classList.toggle('active', forma === 'dinheiro');
   document.getElementById('btn-enviar-pedido').style.display = forma === 'cartao' ? 'none' : 'block';
 
   if (forma === 'pix') {
     tentarGerarPixSeEmailValido();
-  } else {
+  } else if (forma === 'cartao') {
     montarCardBrick();
   }
+}
+
+function alternarTroco() {
+  const precisa = document.getElementById('input-precisa-troco').checked;
+  document.getElementById('troco-wrapper').style.display = precisa ? 'block' : 'none';
+  if (!precisa) document.getElementById('input-troco-para').value = '';
 }
 
 function tentarGerarPixSeEmailValido() {
@@ -126,10 +133,11 @@ function tentarGerarPixSeEmailValido() {
     document.getElementById('pix-copia-cola').value = '';
     return;
   }
-  gerarPix(email);
+  const nome = document.getElementById('input-nome').value.trim();
+  gerarPix(email, nome);
 }
 
-async function gerarPix(email) {
+async function gerarPix(email, nome) {
   const qrEl        = document.getElementById('pix-qrcode');
   const copiaColaEl = document.getElementById('pix-copia-cola');
 
@@ -141,7 +149,7 @@ async function gerarPix(email) {
     const res  = await fetch(`${API}/pagamentos/pix`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ valor: calcularTotal(), email })
+      body:    JSON.stringify({ valor: calcularTotal(), email, nome })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.erro || `Erro ${res.status}`);
@@ -231,6 +239,7 @@ async function processarCartao(formData) {
     body:    JSON.stringify({
       valor: calcularTotal(),
       email,
+      nome,
       token: formData.token,
       payment_method_id: formData.payment_method_id,
       installments: formData.installments
@@ -256,7 +265,11 @@ async function processarCartao(formData) {
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error(`Erro ${res.status}`);
+  if (!res.ok) {
+    erro.textContent = 'Pagamento aprovado, mas houve um erro ao registrar o pedido. '
+      + 'Entre em contato com o estabelecimento informando o horário da compra.';
+    throw new Error(`Erro ${res.status}`);
+  }
 
   const data = await res.json();
   salvarPedidoLocal(data.id);
@@ -283,7 +296,7 @@ function abrirModal() {
 
   if (formaAtual === 'cartao') {
     montarCardBrick();
-  } else {
+  } else if (formaAtual === 'pix') {
     tentarGerarPixSeEmailValido();
   }
 }
@@ -293,6 +306,8 @@ function fecharModal() {
   mpOrderId = null;
   document.getElementById('pix-qrcode').textContent = 'Preencha seu e-mail acima para gerar o QR Code.';
   document.getElementById('pix-copia-cola').value = '';
+  document.getElementById('input-precisa-troco').checked = false;
+  alternarTroco();
   if (cardBrickController) {
     cardBrickController.unmount().catch(() => {});
     cardBrickController = null;
@@ -309,7 +324,18 @@ async function confirmarPedido() {
     return;
   }
 
-  if (!mpOrderId) {
+  const forma = document.querySelector('input[name="forma-pagamento"]:checked').value;
+
+  let trocoPara = null;
+  if (forma === 'dinheiro' && document.getElementById('input-precisa-troco').checked) {
+    trocoPara = parseFloat(document.getElementById('input-troco-para').value);
+    if (isNaN(trocoPara) || trocoPara < calcularTotal()) {
+      erro.textContent = 'Informe um valor de troco maior ou igual ao total do pedido.';
+      return;
+    }
+  }
+
+  if (forma === 'pix' && !mpOrderId) {
     erro.textContent = 'Aguarde o QR Code Pix ser gerado.';
     return;
   }
@@ -326,9 +352,10 @@ async function confirmarPedido() {
       cliente: { nome, tel, end },
       itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, extras: i.extras, qtd: i.qtd })),
       total: calcularTotal(),
-      forma_pagamento: 'pix',
-      mp_order_id: mpOrderId
+      forma_pagamento: forma,
     };
+    if (forma === 'pix') payload.mp_order_id = mpOrderId;
+    if (trocoPara !== null) payload.troco_para = trocoPara;
 
     const res  = await fetch(`${API}/pedidos`, {
       method:  'POST',
