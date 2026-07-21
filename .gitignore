@@ -211,3 +211,6 @@ __marimo__/
 
 # Netlify CLI local state
 .netlify/
+
+# Anotações pessoais de deploy (contém senha do painel)
+ANOTACOES-DEPLOY.md
