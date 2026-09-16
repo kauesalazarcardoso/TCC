@@ -12,6 +12,11 @@ MIN_CONFIDENCE = 0.3
 MIN_TRANSACOES = 3
 LIMITE_PADRAO = 4
 
+# Vitrine fixa: a Nutella entra sempre como uma das recomendações (é o
+# complemento que a casa mais quer empurrar), ocupando uma das 4 vagas. As
+# outras 3 continuam vindo do Apriori/popularidade normalmente.
+COMPLEMENTO_FIXO = "Nutella"
+
 
 def _transacoes_complementos():
     """Cada item de um pedido (um copo com os complementos marcados nele) diz
@@ -96,4 +101,11 @@ def recomendar_complementos(selecionados, limite=LIMITE_PADRAO):
         if nome not in recomendados:
             recomendados.append(nome)
 
-    return recomendados[:limite]
+    recomendados = recomendados[:limite]
+
+    if COMPLEMENTO_FIXO not in ja_escolhidos:
+        recomendados = [n for n in recomendados if n != COMPLEMENTO_FIXO]
+        recomendados.insert(0, COMPLEMENTO_FIXO)
+        recomendados = recomendados[:limite]
+
+    return recomendados

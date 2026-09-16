@@ -35,12 +35,14 @@ def test_fallback_popularidade_sem_regra_para_o_item(client):
 
     # "Morango" nunca apareceu junto de nada no histórico: não há regra de
     # associação aplicável, então cai pro mais pedido no geral (excluindo
-    # o próprio selecionado).
+    # o próprio selecionado). A Nutella é vitrine fixa e sempre ocupa uma
+    # das vagas quando ainda não foi selecionada.
     response = client.get("/recomendacoes/complementos?selecionados=Morango")
 
     assert response.status_code == 200
     sugestoes = json.loads(response.data)
-    assert sugestoes[0] in ("Granola", "Banana")
+    assert sugestoes[0] == "Nutella"
+    assert set(sugestoes[1:]) <= {"Granola", "Banana"}
     assert "Morango" not in sugestoes
 
 
@@ -62,6 +64,34 @@ def test_regra_de_associacao_e_priorizada(client):
     # não gera regra, então só aparece — se aparecer — como preenchimento
     # de popularidade, atrás dos itens de regra.
     assert sugestoes[0] == "Morango"
+    assert "Nutella" not in sugestoes
+
+
+def test_nutella_fixa_completa_ate_quatro_recomendacoes(client):
+    for _ in range(6):
+        assert _criar_pedido(client, ["Morango", "Granola"]).status_code == 201
+    for _ in range(2):
+        assert _criar_pedido(client, ["Morango", "Banana"]).status_code == 201
+
+    # "Morango" gera regra de associação (Granola), mas a Nutella entra do
+    # mesmo jeito, sempre, como vitrine fixa — mesmo sem aparecer no
+    # histórico — completando as 4 vagas.
+    response = client.get("/recomendacoes/complementos?selecionados=Morango")
+
+    assert response.status_code == 200
+    sugestoes = json.loads(response.data)
+    assert len(sugestoes) <= 4
+    assert "Nutella" in sugestoes
+    assert "Morango" not in sugestoes
+
+
+def test_nutella_ja_selecionada_nao_e_sugerida_de_novo(client):
+    for _ in range(4):
+        assert _criar_pedido(client, ["Nutella", "Morango"]).status_code == 201
+
+    response = client.get("/recomendacoes/complementos?selecionados=Nutella")
+
+    sugestoes = json.loads(response.data)
     assert "Nutella" not in sugestoes
 
 
