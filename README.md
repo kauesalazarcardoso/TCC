@@ -123,14 +123,7 @@ docker compose down
 
 ### Login do proprietário
 
-Os painéis **Gestor** e **Admin** exigem login (usuário e senha ficam salvos, com a senha criptografada, na tabela `usuarios` do banco). Credenciais padrão, criadas automaticamente na primeira execução:
-
-```
-usuário: admin
-senha:   acai2026
-```
-
-Para definir outras credenciais desde o início, exporte `OWNER_USUARIO` e `OWNER_SENHA` (por exemplo no `backend/.env`) **antes** de subir o projeto pela primeira vez — elas só são usadas na criação inicial do usuário. Para trocar depois, edite a tabela `usuarios` (ex.: pelo Adminer em http://localhost:8083).
+Os painéis **Gestor** e **Admin** exigem login (usuário e senha ficam salvos, com a senha criptografada, na tabela `usuarios` do banco). Não há credenciais padrão: defina `OWNER_USUARIO` e `OWNER_SENHA` (por exemplo no `backend/.env`) **antes** de subir o projeto pela primeira vez — elas são obrigatórias e só são usadas na criação inicial do usuário. Para trocar depois, edite a tabela `usuarios` (ex.: pelo Adminer em http://localhost:8083).
 
 ### Páginas do cliente (porta 8080)
 
