@@ -3,6 +3,16 @@ from collections import Counter
 
 from database import get_conn
 
+# Importados no carregamento do módulo (ou seja, quando o servidor sobe) e
+# não na primeira recomendação: o pandas leva 1-2 s pra carregar, e assim
+# quem marca o primeiro complemento depois de uma partida não espera por isso.
+try:
+    import pandas as pd
+    from mlxtend.frequent_patterns import apriori, association_rules
+    from mlxtend.preprocessing import TransactionEncoder
+except ImportError:
+    pd = None
+
 # Limiares baixos de propósito: o histórico de pedidos ainda é pequeno (TCC
 # em fase piloto), então regras exigentes deixariam o Apriori sem achar
 # nada quase sempre e a recomendação cairia sempre pro fallback de
@@ -48,11 +58,7 @@ def _mais_populares(transacoes, excluir):
 def _regras_associacao(transacoes):
     if len(transacoes) < MIN_TRANSACOES:
         return None
-    try:
-        import pandas as pd
-        from mlxtend.frequent_patterns import apriori, association_rules
-        from mlxtend.preprocessing import TransactionEncoder
-    except ImportError:
+    if pd is None:
         return None
 
     encoder = TransactionEncoder()
