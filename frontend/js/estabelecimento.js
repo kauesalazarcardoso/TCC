@@ -689,7 +689,7 @@ async function renderHistorico() {
     ${botaoVoltar}
     <h2 class="secao-titulo">📜 Histórico (últimos 7 dias)</h2>
     ${pedidos.map(p => {
-      const podeVoltar = ORDEM.indexOf(p.status) > 0;
+      const podeVoltar = ORDEM.indexOf(p.status) > 0 || p.status === 'recusado';
       return `
       <div class="pedido-card ${p.status}">
         <div class="pedido-topo">
@@ -707,8 +707,8 @@ async function renderHistorico() {
         </div>
         ${podeVoltar ? `
           <div class="acoes">
-            <button class="btn-acao btn-voltar" onclick="voltarStatus(${p.id})" title="Desfazer último avanço de status">
-              ↩️ Voltar Status
+            <button class="btn-acao btn-voltar" onclick="voltarStatus(${p.id})" title="${p.status === 'recusado' ? 'Desfazer recusa do pedido' : 'Desfazer último avanço de status'}">
+              ↩️ ${p.status === 'recusado' ? 'Desfazer Recusa' : 'Voltar Status'}
             </button>
           </div>` : ''}
       </div>`;
@@ -813,7 +813,7 @@ async function render() {
   el.innerHTML = ordenados.map(p => {
     const idx         = ORDEM.indexOf(p.status);
     const podeAvancar = idx !== -1 && idx < ORDEM.length - 1;
-    const podeVoltar  = idx > 0;
+    const podeVoltar  = idx > 0 || p.status === 'recusado';
     const podeNegar   = !finalizado(p.status);
 
     const itensHTML = p.itens.map(item => `
@@ -892,8 +892,8 @@ async function render() {
             ${proximoLabel}
           </button>
           ${podeVoltar ? `
-            <button class="btn-acao btn-voltar" onclick="voltarStatus(${p.id})" title="Desfazer último avanço de status">
-              ↩️ Voltar Status
+            <button class="btn-acao btn-voltar" onclick="voltarStatus(${p.id})" title="${p.status === 'recusado' ? 'Desfazer recusa do pedido' : 'Desfazer último avanço de status'}">
+              ↩️ ${p.status === 'recusado' ? 'Desfazer Recusa' : 'Voltar Status'}
             </button>` : ''}
           <button class="btn-acao btn-imprimir" onclick="imprimirPedido(${p.id})">
             🖨️ Imprimir

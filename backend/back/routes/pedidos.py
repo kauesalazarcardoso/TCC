@@ -317,14 +317,27 @@ def voltar_status(pedido_id):
     """Desfaz um avanço de status por engano (ex: o gestor clicou 'Marcar
     como Entregue' sem querer) — volta uma etapa em ORDEM_STATUS. Também
     desarquiva o pedido, pra cobrir o caso dele já ter sido tirado da fila
-    por 'Limpar Entregues' antes do gestor perceber o engano."""
+    por 'Limpar Entregues' antes do gestor perceber o engano.
+
+    Se o pedido foi recusado por engano, restaura o status que ele tinha
+    antes da recusa (guardado em status_anterior)."""
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT status FROM pedidos WHERE id = %s", (pedido_id,)
+            "SELECT status, status_anterior FROM pedidos WHERE id = %s", (pedido_id,)
         ).fetchone()
 
         if not row:
             return jsonify({"erro": "Pedido não encontrado"}), 404
+
+        if row["status"] == STATUS_RECUSADO:
+            anterior = row["status_anterior"]
+            novo_status = anterior if anterior in ORDEM_STATUS[:-1] else ORDEM_STATUS[0]
+            conn.execute(
+                "UPDATE pedidos SET status = %s, status_anterior = NULL, "
+                "arquivado = FALSE WHERE id = %s",
+                (novo_status, pedido_id)
+            )
+            return jsonify({"id": pedido_id, "status": novo_status})
 
         if row["status"] not in ORDEM_STATUS:
             return jsonify({"erro": "Não é possível voltar o status desse pedido"}), 400
@@ -360,7 +373,8 @@ def recusar_pedido(pedido_id):
             return jsonify({"erro": "Pedido não pode mais ser recusado"}), 400
 
         conn.execute(
-            "UPDATE pedidos SET status = %s WHERE id = %s", (STATUS_RECUSADO, pedido_id)
+            "UPDATE pedidos SET status = %s, status_anterior = %s WHERE id = %s",
+            (STATUS_RECUSADO, row["status"], pedido_id)
         )
 
     return jsonify({"id": pedido_id, "status": STATUS_RECUSADO})

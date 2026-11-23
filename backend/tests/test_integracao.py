@@ -121,6 +121,35 @@ def test_voltar_status(client, auth_headers):
     assert json.loads(response.data)["status"] == "aguardando"
 
 
+def test_voltar_status_desfaz_recusa_restaurando_status_anterior(client, auth_headers):
+    criar = _criar_pedido_dinheiro(client, valor=25.0)
+    pedido_id = json.loads(criar.data)["id"]
+
+    client.patch(f"/pedidos/{pedido_id}/status", headers=auth_headers)  # aguardando -> confirmado
+    client.patch(f"/pedidos/{pedido_id}/status", headers=auth_headers)  # confirmado -> a_caminho
+    client.patch(f"/pedidos/{pedido_id}/recusar", headers=auth_headers)  # recusado por engano
+
+    response = client.patch(f"/pedidos/{pedido_id}/status/voltar", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert json.loads(response.data)["status"] == "a_caminho"
+
+
+def test_voltar_status_desfaz_recusa_arquivada(client, auth_headers):
+    criar = _criar_pedido_dinheiro(client, valor=25.0)
+    pedido_id = json.loads(criar.data)["id"]
+
+    client.patch(f"/pedidos/{pedido_id}/recusar", headers=auth_headers)
+    client.delete("/pedidos/entregues", headers=auth_headers)  # arquiva recusados
+
+    response = client.patch(f"/pedidos/{pedido_id}/status/voltar", headers=auth_headers)
+    assert response.status_code == 200
+    assert json.loads(response.data)["status"] == "aguardando"
+
+    ativos = json.loads(client.get("/pedidos", headers=auth_headers).data)
+    assert pedido_id in [p["id"] for p in ativos]
+
+
 def test_voltar_status_no_inicial_falha(client, auth_headers):
     criar = _criar_pedido_dinheiro(client, valor=25.0)
     pedido_id = json.loads(criar.data)["id"]

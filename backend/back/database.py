@@ -115,6 +115,9 @@ _PEDIDOS_COLUNAS_NOVAS = {
     # telefone e endereço de qualquer cliente pra quem soubesse iterar IDs
     # próximos de um horário conhecido.
     "token":           "TEXT UNIQUE",
+    # Status que o pedido tinha antes de ser recusado — permite desfazer uma
+    # recusa feita por engano ('Voltar Status' restaura esse valor).
+    "status_anterior": "TEXT",
 }
 
 _PEDIDOS_COLUNAS_REMOVIDAS = (
