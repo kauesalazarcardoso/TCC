@@ -269,6 +269,117 @@ body {
   color: #999;
 }
 
+/* APARELHOS QUE RECEBEM NOTIFICAÇÃO */
+.secao-aparelhos:empty { display: none; }
+
+.secao-aparelhos {
+  background: white;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+}
+
+.aparelhos-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.aparelhos-topo .secao-titulo { margin: 0; }
+
+.btn-fechar-aparelhos {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.aparelhos-ajuda {
+  font-size: 0.82rem;
+  color: #777;
+  margin: 0 0 14px;
+}
+
+.aparelho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid #eee;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.aparelho.atual {
+  border-color: var(--secondary);
+  background: #f9f5fd;
+}
+
+.aparelho-nome {
+  font-weight: 700;
+  color: #333;
+}
+
+.aparelho-nome.sem-nome { color: #999; font-style: italic; font-weight: 600; }
+
+.aparelho-tag {
+  display: inline-block;
+  background: var(--secondary);
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.aparelho-detalhe {
+  font-size: 0.78rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+.aparelho-acoes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.aparelho-acoes button {
+  border: 1.5px solid #ddd;
+  background: white;
+  color: #555;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.aparelho-acoes .btn-remover-aparelho { color: #b91c1c; border-color: #f3c4c4; }
+
+.btn-testar-todos {
+  width: auto;
+  flex: none;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+}
+
+.aparelhos-vazio {
+  text-align: center;
+  color: #999;
+  padding: 10px 0;
+}
+
 /* MOBILE */
 @media (max-width: 600px) {
   .header { padding: 12px 4%; }

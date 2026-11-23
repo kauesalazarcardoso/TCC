@@ -151,3 +151,45 @@ async function render() {
 
 render();
 const intervalo = setInterval(render, 5000);
+
+// ── AVALIAÇÃO DAS RECOMENDAÇÕES DE COMPLEMENTOS ───────────────
+// Aparece uma vez, logo depois do pedido (pedido.js grava "avaliacaoPendente").
+// Fechar no × ou escolher uma nota fecha na hora e não pergunta de novo.
+function lerAvaliacaoPendente() {
+  try { return JSON.parse(localStorage.getItem('avaliacaoPendente') || 'null'); }
+  catch { return null; }
+}
+
+function descartarAvaliacaoPendente() {
+  try { localStorage.removeItem('avaliacaoPendente'); } catch { /* ignora */ }
+}
+
+function iniciarAvaliacao() {
+  const pendente = lerAvaliacaoPendente();
+  const box = document.getElementById('avaliacao-box');
+  if (!pendente || !pendente.token || !box) return;
+
+  const fechar = () => {
+    box.hidden = true;
+    descartarAvaliacaoPendente();
+  };
+
+  document.getElementById('avaliacao-fechar').addEventListener('click', fechar);
+
+  document.getElementById('avaliacao-estrelas').addEventListener('click', (e) => {
+    const estrela = e.target.closest('.estrela');
+    if (!estrela) return;
+    fechar();
+    // keepalive: o envio termina mesmo se o cliente sair da página em seguida
+    fetch(`${API}/avaliacoes/recomendacoes`, {
+      method:    'POST',
+      headers:   { 'Content-Type': 'application/json' },
+      body:      JSON.stringify({ pedido_token: pendente.token, nota: Number(estrela.dataset.nota), usou_recomendacao: !!pendente.usou }),
+      keepalive: true,
+    }).catch(() => { /* avaliação é opcional, falha não atrapalha o cliente */ });
+  });
+
+  box.hidden = false;
+}
+
+iniciarAvaliacao();

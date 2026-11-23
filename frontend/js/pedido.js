@@ -110,9 +110,14 @@ async function atualizarRecomendacoes(produtoId) {
     </div>`;
 }
 
+// Se o cliente aceitou alguma sugestão — vai junto na avaliação das
+// recomendações que aparece na tela de acompanhamento.
+let usouRecomendacao = false;
+
 function aplicarRecomendacao(produtoId, nome) {
   const checkbox = Array.from(document.querySelectorAll(`.check-${produtoId}`)).find(c => c.value === nome);
   if (checkbox && !checkbox.checked) {
+    usouRecomendacao = true;
     checkbox.checked = true;
     limitarAcompanhamentos(produtoId);
   }
@@ -395,6 +400,9 @@ async function confirmarPedido() {
     }
 
     salvarPedidoLocal(data.token);
+    try {
+      localStorage.setItem('avaliacaoPendente', JSON.stringify({ token: data.token, usou: usouRecomendacao }));
+    } catch (e) { /* sem storage, só não pergunta a avaliação */ }
     window.location.href = `acompanhar.html?id=${data.token}`;
 
   } catch (e) {

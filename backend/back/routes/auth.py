@@ -1,6 +1,6 @@
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import Blueprint, jsonify, request
@@ -17,6 +17,13 @@ auth_bp = Blueprint('auth', __name__)
 _LIMITE_TENTATIVAS = 5
 _BLOQUEIO_SEGUNDOS = 15 * 60
 _tentativas_login = {}  # usuario -> {"falhas": int, "bloqueado_ate": float | None}
+
+# Sessão expira depois de 30 dias SEM USO (não 30 dias desde o login): o painel
+# do estabelecimento faz polling a cada 5s, então quem está usando nunca é
+# deslogado no meio do expediente. Pra não gravar no banco a cada requisição,
+# o "último uso" (coluna criado_em) só é renovado se tiver mais de 1 dia.
+_SESSAO_EXPIRA_APOS = timedelta(days=30)
+_SESSAO_RENOVA_APOS = timedelta(days=1)
 
 
 def _registrar_falha_login(usuario):
@@ -57,20 +64,30 @@ def login_required(fn):
         token = _token_da_requisicao()
         if not token:
             return jsonify({"erro": "Autenticação necessária"}), 401
+        agora = datetime.now()
         with get_conn() as conn:
             sessao = conn.execute(
-                "SELECT usuario FROM sessoes WHERE token = %s", (token,)
+                "SELECT usuario, criado_em FROM sessoes WHERE token = %s", (token,)
             ).fetchone()
-        if not sessao:
-            return jsonify({"erro": "Sessão inválida ou expirada"}), 401
+            if not sessao:
+                return jsonify({"erro": "Sessão inválida ou expirada"}), 401
+            ultimo_uso = datetime.fromisoformat(sessao["criado_em"])
+            if agora - ultimo_uso > _SESSAO_EXPIRA_APOS:
+                conn.execute("DELETE FROM sessoes WHERE token = %s", (token,))
+                return jsonify({"erro": "Sessão inválida ou expirada"}), 401
+            if agora - ultimo_uso > _SESSAO_RENOVA_APOS:
+                conn.execute(
+                    "UPDATE sessoes SET criado_em = %s WHERE token = %s",
+                    (agora.isoformat(), token)
+                )
         return fn(*args, **kwargs)
     return wrapper
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()
-    if not data or not data.get("usuario") or not data.get("senha"):
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data.get("usuario") or not data.get("senha"):
         return jsonify({"erro": "Usuário e senha são obrigatórios"}), 400
 
     usuario_informado = str(data["usuario"]).strip()

@@ -10,6 +10,13 @@ self.addEventListener('push', event => {
     self.registration.showNotification(data.title || 'Novo pedido!', {
       body: data.body || '',
       tag: data.tag || 'pedido',
+      // Garante som/vibração mesmo se já houver um aviso com a mesma tag na tela.
+      renotify: true,
+      silent: false,
+      // No computador, o aviso fica na tela até alguém clicar (não some sozinho).
+      requireInteraction: true,
+      // No celular Android: vibra no padrão longo-curto-longo.
+      vibrate: [400, 150, 400, 150, 400],
     })
   );
 });

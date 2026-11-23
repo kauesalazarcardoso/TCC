@@ -51,20 +51,32 @@ function tocarSomNovoPedido() {
   try {
     const ctx = getAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
+    // Compressor na saída: permite volume alto sem distorcer nos alto-falantes do PC.
+    const saida = ctx.createDynamicsCompressor();
+    saida.connect(ctx.destination);
+
     const tocarNota = (freq, inicio, duracao) => {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = 'sine';
+      // Onda quadrada soa bem mais alta e "corta" o barulho da loja melhor que a senoidal.
+      osc.type = 'square';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.0001, ctx.currentTime + inicio);
-      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + inicio + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.9, ctx.currentTime + inicio + 0.01);
+      gain.gain.setValueAtTime(0.9, ctx.currentTime + inicio + duracao * 0.6);
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + inicio + duracao);
-      osc.connect(gain).connect(ctx.destination);
+      osc.connect(gain).connect(saida);
       osc.start(ctx.currentTime + inicio);
       osc.stop(ctx.currentTime + inicio + duracao + 0.05);
     };
-    tocarNota(880, 0, 0.15);
-    tocarNota(1174.66, 0.18, 0.2);
+
+    // Toque de 3 notas repetido 3 vezes (~2,5 s), pra ninguém deixar passar.
+    for (let i = 0; i < 3; i++) {
+      const t = i * 0.85;
+      tocarNota(988,  t,        0.18);
+      tocarNota(1319, t + 0.2,  0.18);
+      tocarNota(1568, t + 0.4,  0.3);
+    }
   } catch (e) {
     console.error('Erro ao tocar som de notificação:', e);
   }
@@ -95,7 +107,10 @@ async function inscricaoAtiva() {
   return reg.pushManager.getSubscription();
 }
 
-async function atualizarBotaoNotificacao() {
+// `inscritoNoServidor` (opcional): false quando a lista de aparelhos mostrou
+// que este navegador não está mais cadastrado no servidor (removido por outro
+// aparelho); aí o botão volta a oferecer a ativação.
+async function atualizarBotaoNotificacao(inscritoNoServidor = true) {
   const btn = document.getElementById('btn-notif');
   if (!btn) return;
   if (!suportaPush()) {
@@ -103,7 +118,7 @@ async function atualizarBotaoNotificacao() {
     return;
   }
   const sub = await inscricaoAtiva();
-  if (sub && Notification.permission === 'granted') {
+  if (sub && inscritoNoServidor && Notification.permission === 'granted') {
     btn.textContent = '🔔 Notificações ativadas';
     btn.disabled = true;
   } else {
@@ -135,17 +150,249 @@ async function ativarNotificacoes() {
       });
     }
 
-    await fetch(`${API}/push/subscribe`, {
+    const nome = prompt(
+      'Dê um nome para este aparelho (ex.: "PC da loja", "Celular do Kauê"):',
+      sugerirNomeAparelho()
+    );
+
+    const res = await fetch(`${API}/push/subscribe`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body:    JSON.stringify(sub.toJSON()),
+      body:    JSON.stringify({ ...sub.toJSON(), nome: nome || null }),
     });
+    if (tratarRespostaAuth(res)) return;
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    if (aparelhosAbertos) renderAparelhos();
   } catch (e) {
     console.error('Erro ao ativar notificações:', e);
     alert('Não foi possível ativar as notificações. Tente novamente.');
   } finally {
     atualizarBotaoNotificacao();
   }
+}
+
+// Roda toda vez que o painel abre. Se este navegador tem inscrição local,
+// reconfirma ela no servidor (sem mexer no nome). Assim "Notificações
+// ativadas" no botão sempre significa que o servidor vai mandar aviso pra cá:
+// se a inscrição tinha sido removida de lá, ela volta; se não der pra
+// confirmar, o botão volta a mostrar "Ativar notificações".
+async function sincronizarInscricao() {
+  if (!suportaPush()) return atualizarBotaoNotificacao();
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) reg.update().catch(() => {}); // pega a versão nova do sw.js
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (!sub || Notification.permission !== 'granted') return atualizarBotaoNotificacao();
+
+    const res = await fetch(`${API}/push/subscribe`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body:    JSON.stringify(sub.toJSON()),
+    });
+    if (tratarRespostaAuth(res)) return;
+    atualizarBotaoNotificacao(res.ok);
+  } catch (e) {
+    console.error('Erro ao confirmar inscrição de notificações:', e);
+    atualizarBotaoNotificacao(false);
+  }
+}
+
+// ── APARELHOS QUE RECEBEM NOTIFICAÇÃO ─────────────────────────
+let aparelhosAbertos = false;
+
+async function testarTodosAparelhos() {
+  try {
+    const res = await fetch(`${API}/push/dispositivos/teste`, {
+      method: 'POST', headers: authHeaders()
+    });
+    if (tratarRespostaAuth(res)) return;
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    const resultados = await res.json();
+    if (resultados.length === 0) {
+      alert('Nenhum aparelho está cadastrado para receber notificações.');
+    } else {
+      const texto = { ok: '✅ enviado', expirada: '❌ não está mais inscrito (removido)', erro: '⚠️ falhou' };
+      alert(
+        'Resultado do teste:\n\n' +
+        resultados.map(r => `${r.nome || 'Sem nome'} (${r.navegador}): ${texto[r.resultado] || r.resultado}`).join('\n') +
+        '\n\nConfira se o aviso tocou em cada aparelho marcado como enviado.'
+      );
+    }
+  } catch (e) {
+    console.error('Erro ao testar aparelhos:', e);
+    alert('Não foi possível enviar o teste.');
+  }
+  renderAparelhos();
+}
+
+function sugerirNomeAparelho() {
+  const ua = navigator.userAgent;
+  const tipo = /Android|iPhone|iPad|Mobile/i.test(ua) ? 'Celular' : 'Computador';
+  const navegador = /Edg\//.test(ua) ? 'Edge'
+    : /Firefox\//.test(ua) ? 'Firefox'
+    : /Chrome\//.test(ua) ? 'Chrome'
+    : /Safari\//.test(ua) ? 'Safari'
+    : 'navegador';
+  return `${tipo} (${navegador})`;
+}
+
+// Mesmo hash que o backend calcula (sha256 do endpoint, 16 primeiros
+// caracteres), pra marcar na lista qual é "este aparelho" sem que o
+// servidor precise devolver o endpoint.
+async function idDesteAparelho() {
+  try {
+    const sub = await inscricaoAtiva();
+    if (!sub || !window.crypto || !crypto.subtle) return null;
+    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sub.endpoint));
+    return [...new Uint8Array(bytes)]
+      .map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAparelhos() {
+  try {
+    const res = await fetch(`${API}/push/dispositivos`, { headers: authHeaders() });
+    if (tratarRespostaAuth(res)) return null;
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.error('Erro ao buscar aparelhos:', e);
+    return null;
+  }
+}
+
+function toggleAparelhos() {
+  aparelhosAbertos = !aparelhosAbertos;
+  if (aparelhosAbertos) {
+    renderAparelhos();
+  } else {
+    document.getElementById('secao-aparelhos').innerHTML = '';
+  }
+}
+
+function _formatarDataHora(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+async function renderAparelhos() {
+  const el = document.getElementById('secao-aparelhos');
+  const topo = `
+    <div class="aparelhos-topo">
+      <h2 class="secao-titulo">📱 Aparelhos que recebem notificação</h2>
+      <button class="btn-fechar-aparelhos" onclick="toggleAparelhos()" title="Fechar">✕</button>
+    </div>
+    <p class="aparelhos-ajuda">
+      Estes aparelhos recebem o aviso de pedido novo mesmo com o painel fechado.
+      Para incluir outro aparelho, abra o painel nele e clique em “🔔 Ativar notificações”.
+    </p>
+    <button class="btn-acao btn-confirmar btn-testar-todos" onclick="testarTodosAparelhos()">
+      🔔 Testar todos os aparelhos
+    </button>`;
+
+  if (!el.innerHTML) el.innerHTML = `${topo}<p class="aparelhos-vazio">Carregando...</p>`;
+
+  const [aparelhos, idAtual] = await Promise.all([fetchAparelhos(), idDesteAparelho()]);
+  if (!aparelhosAbertos) return; // fechou enquanto carregava
+
+  if (aparelhos === null) {
+    el.innerHTML = `${topo}<p class="aparelhos-vazio" style="color:#e74c3c">Erro ao carregar a lista de aparelhos.</p>`;
+    return;
+  }
+
+  // Se este aparelho foi removido por outro, o botão de ativar volta a aparecer.
+  atualizarBotaoNotificacao(aparelhos.some(a => a.aparelho_id === idAtual));
+
+  if (aparelhos.length === 0) {
+    el.innerHTML = `${topo}<p class="aparelhos-vazio">Nenhum aparelho está recebendo notificações.</p>`;
+    return;
+  }
+
+  el.innerHTML = `${topo}${aparelhos.map(a => {
+    const atual = a.aparelho_id === idAtual;
+    return `
+      <div class="aparelho ${atual ? 'atual' : ''}">
+        <div>
+          <div class="aparelho-nome ${a.nome ? '' : 'sem-nome'}">
+            ${a.nome ? escapeHtml(a.nome) : 'Sem nome'}
+            ${atual ? '<span class="aparelho-tag">este aparelho</span>' : ''}
+          </div>
+          <div class="aparelho-detalhe">
+            ${escapeHtml(a.navegador)} · ativado em ${escapeHtml(_formatarDataHora(a.criado_em))}
+          </div>
+        </div>
+        <div class="aparelho-acoes">
+          <button onclick="testarAparelho(${a.id})">🔔 Testar</button>
+          <button onclick="renomearAparelho(${a.id})">✏️ Renomear</button>
+          <button class="btn-remover-aparelho" onclick="removerAparelho(${a.id}, ${atual})">🗑️ Remover</button>
+        </div>
+      </div>`;
+  }).join('')}`;
+}
+
+async function testarAparelho(id) {
+  try {
+    const res = await fetch(`${API}/push/dispositivos/${id}/teste`, {
+      method: 'POST', headers: authHeaders()
+    });
+    if (tratarRespostaAuth(res)) return;
+    const corpo = await res.json().catch(() => ({}));
+    if (res.ok) {
+      alert('Notificação de teste enviada! Confira se ela apareceu no aparelho.');
+    } else {
+      alert(corpo.erro || 'Não foi possível enviar a notificação de teste.');
+    }
+  } catch (e) {
+    console.error('Erro ao testar aparelho:', e);
+    alert('Não foi possível enviar a notificação de teste.');
+  }
+  renderAparelhos();
+}
+
+async function renomearAparelho(id) {
+  const nome = prompt('Novo nome para o aparelho:');
+  if (!nome || !nome.trim()) return;
+  try {
+    const res = await fetch(`${API}/push/dispositivos/${id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body:    JSON.stringify({ nome: nome.trim() }),
+    });
+    if (tratarRespostaAuth(res)) return;
+    if (!res.ok) throw new Error(`Erro ${res.status}`);
+  } catch (e) {
+    console.error('Erro ao renomear aparelho:', e);
+    alert('Não foi possível renomear o aparelho.');
+  }
+  renderAparelhos();
+}
+
+async function removerAparelho(id, ehEsteAparelho) {
+  const aviso = ehEsteAparelho
+    ? 'Parar de receber notificações NESTE aparelho?'
+    : 'Remover este aparelho? Ele deixa de receber os avisos de pedido novo.';
+  if (!confirm(aviso)) return;
+  try {
+    const res = await fetch(`${API}/push/dispositivos/${id}`, {
+      method: 'DELETE', headers: authHeaders()
+    });
+    if (tratarRespostaAuth(res)) return;
+    if (!res.ok && res.status !== 404) throw new Error(`Erro ${res.status}`);
+    if (ehEsteAparelho) {
+      const sub = await inscricaoAtiva();
+      if (sub) await sub.unsubscribe().catch(() => {});
+    }
+  } catch (e) {
+    console.error('Erro ao remover aparelho:', e);
+    alert('Não foi possível remover o aparelho.');
+  }
+  renderAparelhos();
+  atualizarBotaoNotificacao();
 }
 
 // ── BUSCA TODOS OS PEDIDOS ────────────────────────────────────
@@ -217,14 +464,16 @@ let pedidosAtuais = [];
 function reciboPedidoHTML(p) {
   const idCurto = String(p.id).slice(-5);
 
+  // Cada item ocupa seu próprio bloco: nome em cima, complementos um por linha
+  // e o valor sozinho embaixo, alinhado à direita (não briga por espaço com o nome).
   const itensHTML = p.itens.map(item => `
-    <div class="linha">
-      <span>${item.qtd}x ${escapeHtml(item.nome)}</span>
-      <span>R$ ${(item.preco * item.qtd).toFixed(2)}</span>
+    <div class="item">
+      <div class="item-nome">${item.qtd}x ${escapeHtml(item.nome)}</div>
+      ${(item.extras || []).length
+        ? `<div class="extras">${item.extras.map(extra => `<div class="extra">+ ${escapeHtml(extra)}</div>`).join('')}</div>`
+        : ''}
+      <div class="item-valor">R$ ${(item.preco * item.qtd).toFixed(2)}</div>
     </div>
-    ${item.extras && item.extras.length
-      ? `<div class="extras">${escapeHtml(item.extras.join(', '))}</div>`
-      : ''}
   `).join('');
 
   return `<!DOCTYPE html>
@@ -233,34 +482,106 @@ function reciboPedidoHTML(p) {
 <meta charset="utf-8">
 <title>Pedido #${idCurto}</title>
 <style>
-  @page { margin: 2mm; size: 58mm auto; }
+  @page { margin: 0 2mm; size: 58mm auto; }
   * { box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 10px; width: 48mm; margin: 0; padding: 0; color: #000; }
-  h1 { font-size: 13px; text-align: center; margin: 0 0 4px; }
-  .sep { border-top: 1px dashed #000; margin: 4px 0; }
-  .linha { display: flex; justify-content: space-between; gap: 4px; }
-  .extras { font-size: 9px; padding-left: 6px; color: #333; }
-  .total { font-weight: bold; font-size: 11px; }
-  .info p { margin: 2px 0; word-break: break-word; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    width: 48mm;
+    margin: 0;
+    /* Espaço em branco em cima e embaixo pra separar um pedido do outro no rolo */
+    padding: 10mm 0 25mm;
+    color: #000;
+    word-break: break-word;
+  }
+  p { margin: 0; }
+  /* Se mesmo assim houver quebra de página, não corta um bloco no meio */
+  .item, .campo, .obs, .linha, .titulo { break-inside: avoid; page-break-inside: avoid; }
+  .titulo { break-after: avoid; page-break-after: avoid; }
+
+  /* Cabeçalho */
+  .loja { font-size: 18px; font-weight: bold; text-align: center; }
+  .num  { font-size: 24px; font-weight: bold; text-align: center; margin-top: 6px; }
+  .hora { font-size: 13px; text-align: center; margin-top: 2px; }
+
+  /* Separação entre seções: linha dupla com bastante respiro */
+  .sep { border-top: 2px solid #000; margin: 14px 0; }
+
+  /* Seções */
+  .titulo {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #000;
+    padding-bottom: 2px;
+    margin-bottom: 8px;
+  }
+  .campo { margin-bottom: 7px; }
+  .rotulo { font-size: 11px; font-weight: bold; text-transform: uppercase; }
+  .nome-cliente { font-size: 15px; font-weight: bold; }
+
+  .obs {
+    border: 2px solid #000;
+    padding: 6px;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+
+  /* Itens: separados por linha pontilhada */
+  .item { padding: 6px 0 8px; border-bottom: 1px dashed #000; }
+  .item:last-child { border-bottom: none; }
+  .item-nome { font-weight: bold; font-size: 14px; }
+  .extras { margin-top: 3px; }
+  .extra { font-size: 12px; padding-left: 8px; margin-bottom: 1px; }
+  .item-valor { text-align: right; font-weight: bold; margin-top: 4px; }
+
+  /* Valores */
+  .linha { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 5px; }
+  .linha span:last-child { white-space: nowrap; }
+  .total { font-weight: bold; font-size: 18px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #000; }
+
+  .rodape { text-align: center; font-size: 12px; }
 </style>
 </head>
 <body>
-  <h1>Lovers Açaí</h1>
-  <div class="info">
-    <p>Pedido #${idCurto} — ${p.hora}</p>
-    <p>Cliente: ${escapeHtml(p.cliente.nome || '')}</p>
-    <p>Tel: ${escapeHtml(p.cliente.tel || '')}</p>
-    <p>End: ${escapeHtml(p.cliente.end || '')}</p>
-    ${p.observacao ? `<p>Obs: ${escapeHtml(p.observacao)}</p>` : ''}
+  <p class="loja">LOVERS AÇAÍ</p>
+  <p class="num">PEDIDO #${idCurto}</p>
+  <p class="hora">${escapeHtml(p.hora || '')}</p>
+
+  <div class="sep"></div>
+
+  <p class="titulo">CLIENTE</p>
+  <div class="campo nome-cliente">${escapeHtml(p.cliente.nome || '')}</div>
+  <div class="campo">
+    <div class="rotulo">Telefone</div>
+    <div>${escapeHtml(p.cliente.tel || '')}</div>
   </div>
+  <div class="campo">
+    <div class="rotulo">Endereço</div>
+    <div>${escapeHtml(p.cliente.end || '')}</div>
+  </div>
+  ${p.observacao ? `<div class="obs">OBS: ${escapeHtml(p.observacao)}</div>` : ''}
+
   <div class="sep"></div>
-  ${itensHTML}
+
+  <p class="titulo">ITENS</p>
+  <div class="itens">${itensHTML}</div>
+
   <div class="sep"></div>
-  <div class="linha"><span>Taxa de entrega</span><span>R$ ${Number(p.taxa_entrega || 0).toFixed(2)}</span></div>
+
+  <p class="titulo">VALORES</p>
+  <div class="linha"><span>Entrega</span><span>R$ ${Number(p.taxa_entrega || 0).toFixed(2)}</span></div>
   ${p.taxa_maquininha > 0 ? `<div class="linha"><span>Taxa maquininha</span><span>R$ ${Number(p.taxa_maquininha).toFixed(2)}</span></div>` : ''}
-  <div class="linha"><span>Pagamento</span><span>${escapeHtml(formatarPagamento(p))}</span></div>
-  <div class="sep"></div>
   <div class="linha total"><span>TOTAL</span><span>R$ ${Number(p.total).toFixed(2)}</span></div>
+
+  <div class="sep"></div>
+
+  <p class="titulo">PAGAMENTO</p>
+  <div class="campo"><b>${escapeHtml(formatarPagamento(p))}</b></div>
+
+  <div class="sep"></div>
+  <p class="rodape">Obrigado pela preferência!</p>
 </body>
 </html>`;
 }
@@ -277,6 +598,16 @@ function imprimirPedido(id) {
   janela.document.write(reciboPedidoHTML(pedido));
   janela.document.close();
   janela.onload = () => {
+    // O Chrome não entende altura "auto" no @page e usa a altura de papel do
+    // driver; se o cupom for maior, o final (ex.: TOTAL) vai pra outra "página".
+    // Por isso medimos a altura real do conteúdo e criamos a página desse tamanho.
+    const doc = janela.document;
+    const alturaPx = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+    const alturaMm = Math.ceil(alturaPx * 25.4 / 96) + 5; // px → mm (+ folga)
+    const estilo = doc.createElement('style');
+    estilo.textContent = `@page { size: 58mm ${alturaMm}mm; margin: 0 2mm; }`;
+    doc.head.appendChild(estilo);
+
     janela.focus();
     janela.print();
   };
@@ -581,7 +912,7 @@ async function render() {
 }
 
 // Atualiza a cada 5 segundos para pegar novos pedidos
-atualizarBotaoNotificacao();
+sincronizarInscricao();
 render();
 setInterval(render, 5000);
 

@@ -32,8 +32,11 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
 
     setToken(data.token);
 
+    // Só aceita uma página local (ex: "admin.html") — sem isso, um link como
+    // login.html?next=https://site-falso.com ou ?next=javascript:... mandaria
+    // o dono pra fora do site (ou rodaria código) logo depois de logar.
     const next = new URLSearchParams(location.search).get('next');
-    location.href = next || PAGINA_PADRAO_APOS_LOGIN;
+    location.href = next && /^[\w-]+(\.html)?$/.test(next) ? next : PAGINA_PADRAO_APOS_LOGIN;
 
   } catch (e) {
     erro.textContent = 'Erro ao conectar ao servidor. Verifique se o backend está rodando.';

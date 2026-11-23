@@ -40,6 +40,63 @@ def endpoint_valido(endpoint):
     return host.endswith(".notify.windows.com")
 
 
+def descrever_navegador(endpoint):
+    """Nome amigável do serviço de push, deduzido do host do endpoint."""
+    host = (urlparse(endpoint).hostname or "") if isinstance(endpoint, str) else ""
+    if host in ("fcm.googleapis.com", "android.googleapis.com"):
+        return "Chrome (PC ou Android)"
+    if host.endswith(".notify.windows.com"):
+        return "Edge (Windows)"
+    if host == "web.push.apple.com":
+        return "Safari (iPhone/Mac)"
+    if host == "updates.push.services.mozilla.com":
+        return "Firefox"
+    return "Outro"
+
+
+def _enviar(sub, payload):
+    """Envia o payload pra uma inscrição. Retorna "ok", "expirada" (o
+    serviço de push disse que ela não existe mais e ela foi apagada) ou
+    "erro". Nunca levanta exceção."""
+    if not endpoint_valido(sub["endpoint"]):
+        logger.warning("Inscrição de push com endpoint não reconhecido, ignorando (id=%s)", sub["id"])
+        return "erro"
+    try:
+        webpush(
+            subscription_info={
+                "endpoint": sub["endpoint"],
+                "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
+            },
+            data=payload,
+            # TTL explícito é obrigatório pro WNS (push do Edge/Windows) —
+            # sem isso ele recusa com 400 Bad Request sem corpo, mesmo
+            # com VAPID correto. FCM/Mozilla toleram TTL 0, WNS não.
+            ttl=3600,
+            # Prioridade alta: sem isso o Android em economia de bateria
+            # pode segurar o aviso por vários minutos antes de entregar.
+            headers={"Urgency": "high"},
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub": VAPID_CONTATO},
+        )
+        return "ok"
+    except WebPushException as e:
+        status = e.response.status_code if e.response is not None else None
+        if status in (404, 410):
+            try:
+                with get_conn() as conn:
+                    conn.execute(
+                        "DELETE FROM push_subscriptions WHERE id = %s", (sub["id"],)
+                    )
+            except Exception:
+                logger.exception("Erro ao remover inscrição de push expirada")
+            return "expirada"
+        logger.exception("Erro ao enviar push (endpoint=%s)", sub["endpoint"])
+        return "erro"
+    except Exception:
+        logger.exception("Erro inesperado ao enviar push (endpoint=%s)", sub["endpoint"])
+        return "erro"
+
+
 def enviar_para_todos(titulo, corpo, tag):
     """Envia uma push notification pra todos os dispositivos inscritos.
     Best-effort: nunca levanta exceção, pra nunca derrubar a criação de
@@ -57,36 +114,17 @@ def enviar_para_todos(titulo, corpo, tag):
         return
 
     payload = json.dumps({"title": titulo, "body": corpo, "tag": tag})
-
     for sub in subs:
-        if not endpoint_valido(sub["endpoint"]):
-            logger.warning("Inscrição de push com endpoint não reconhecido, ignorando (id=%s)", sub["id"])
-            continue
-        try:
-            webpush(
-                subscription_info={
-                    "endpoint": sub["endpoint"],
-                    "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
-                },
-                data=payload,
-                # TTL explícito é obrigatório pro WNS (push do Edge/Windows) —
-                # sem isso ele recusa com 400 Bad Request sem corpo, mesmo
-                # com VAPID correto. FCM/Mozilla toleram TTL 0, WNS não.
-                ttl=3600,
-                vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_claims={"sub": VAPID_CONTATO},
-            )
-        except WebPushException as e:
-            status = e.response.status_code if e.response is not None else None
-            if status in (404, 410):
-                try:
-                    with get_conn() as conn:
-                        conn.execute(
-                            "DELETE FROM push_subscriptions WHERE id = %s", (sub["id"],)
-                        )
-                except Exception:
-                    logger.exception("Erro ao remover inscrição de push expirada")
-            else:
-                logger.exception("Erro ao enviar push (endpoint=%s)", sub["endpoint"])
-        except Exception:
-            logger.exception("Erro inesperado ao enviar push (endpoint=%s)", sub["endpoint"])
+        _enviar(sub, payload)
+
+
+def enviar_teste(sub):
+    """Manda uma notificação de teste pra uma inscrição específica."""
+    if not VAPID_PRIVATE_KEY:
+        return "erro"
+    payload = json.dumps({
+        "title": "🔔 Teste de notificação",
+        "body": "Este aparelho está recebendo os avisos de pedido novo.",
+        "tag": f"teste-{sub['id']}",
+    })
+    return _enviar(sub, payload)

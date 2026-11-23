@@ -1,4 +1,7 @@
 import json
+from datetime import datetime, timedelta
+
+import database
 
 from conftest import OWNER_USUARIO_PADRAO, OWNER_SENHA_PADRAO
 from routes.auth import _LIMITE_TENTATIVAS
@@ -119,3 +122,55 @@ def test_login_bloqueio_nao_afeta_outros_usuarios(client):
 
     resp = client.post("/login", json={"usuario": "outro-usuario", "senha": "qualquer"})
     assert resp.status_code == 401
+
+
+def test_login_sem_json_retorna_400(client):
+    response = client.post("/login", data="usuario=admin", content_type="text/plain")
+
+    assert response.status_code == 400
+
+
+# ── Expiração de sessão ────────────────────────────────────────────
+
+def _envelhecer_sessao(auth_headers, dias):
+    token = auth_headers["Authorization"].split(" ", 1)[1]
+    with database.get_conn() as conn:
+        conn.execute(
+            "UPDATE sessoes SET criado_em = %s WHERE token = %s",
+            ((datetime.now() - timedelta(days=dias)).isoformat(), token)
+        )
+    return token
+
+
+def test_sessao_expira_apos_30_dias_sem_uso(client, auth_headers):
+    token = _envelhecer_sessao(auth_headers, dias=31)
+
+    response = client.get("/pedidos", headers=auth_headers)
+
+    assert response.status_code == 401
+    with database.get_conn() as conn:
+        assert conn.execute("SELECT 1 FROM sessoes WHERE token = %s", (token,)).fetchone() is None
+
+
+def test_sessao_em_uso_e_renovada_e_nao_expira(client, auth_headers):
+    token = _envelhecer_sessao(auth_headers, dias=29)
+
+    assert client.get("/pedidos", headers=auth_headers).status_code == 200
+
+    with database.get_conn() as conn:
+        criado_em = conn.execute(
+            "SELECT criado_em FROM sessoes WHERE token = %s", (token,)
+        ).fetchone()["criado_em"]
+    assert datetime.now() - datetime.fromisoformat(criado_em) < timedelta(minutes=1)
+
+
+def test_sessao_recente_nao_e_regravada_a_cada_requisicao(client, auth_headers):
+    token = _envelhecer_sessao(auth_headers, dias=0)
+    with database.get_conn() as conn:
+        antes = conn.execute("SELECT criado_em FROM sessoes WHERE token = %s", (token,)).fetchone()["criado_em"]
+
+    client.get("/pedidos", headers=auth_headers)
+
+    with database.get_conn() as conn:
+        depois = conn.execute("SELECT criado_em FROM sessoes WHERE token = %s", (token,)).fetchone()["criado_em"]
+    assert antes == depois

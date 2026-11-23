@@ -56,9 +56,9 @@ _BAIRROS_INICIAIS = [
 _HORARIOS_INICIAIS = [
     # dia,      abre,    fecha,   fechado
     ("segunda", "13:30", "22:00", 1),
-    ("terca",   "13:30", "22:00", 0),
-    ("quarta",  "13:30", "22:00", 0),
-    ("quinta",  "13:30", "22:00", 0),
+    ("terca",   "13:30", "20:00", 0),
+    ("quarta",  "13:30", "20:00", 0),
+    ("quinta",  "13:30", "20:00", 0),
     ("sexta",   "13:30", "22:00", 0),
     ("sabado",  "13:30", "22:00", 0),
     ("domingo", "13:30", "22:00", 0),
@@ -278,6 +278,17 @@ def init_db():
                 p256dh     TEXT    NOT NULL,
                 auth       TEXT    NOT NULL,
                 criado_em  TEXT    NOT NULL
+            )
+        """)
+        # Nome dado pelo dono pra identificar o aparelho (ex.: "PC da loja").
+        conn.execute("ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS nome TEXT")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS avaliacoes_recomendacao (
+                id                SERIAL  PRIMARY KEY,
+                pedido_token      TEXT    NOT NULL UNIQUE,
+                nota              INTEGER NOT NULL CHECK (nota BETWEEN 1 AND 5),
+                usou_recomendacao BOOLEAN NOT NULL DEFAULT FALSE,
+                criado_em         TEXT    NOT NULL
             )
         """)
         if conn.execute("SELECT COUNT(*) AS c FROM usuarios").fetchone()["c"] == 0:

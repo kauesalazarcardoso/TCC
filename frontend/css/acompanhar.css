@@ -214,3 +214,70 @@ body {
   margin: 0 0 12px;
 }
 
+
+/* AVALIAÇÃO DAS RECOMENDAÇÕES */
+.avaliacao-box {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 420px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  padding: 18px 44px 16px 18px;
+  z-index: 1000;
+  animation: avaliacao-sobe 0.3s ease-out;
+}
+
+.avaliacao-box[hidden] { display: none; }
+
+@keyframes avaliacao-sobe {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.avaliacao-fechar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #f1f1f1;
+  color: #555;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.avaliacao-fechar:hover { background: #e2e2e2; }
+
+.avaliacao-titulo {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.avaliacao-estrelas {
+  display: flex;
+  gap: 6px;
+}
+
+/* Em hover, acende a estrela apontada e todas antes dela */
+.estrela {
+  border: none;
+  background: none;
+  padding: 2px;
+  font-size: 2rem;
+  line-height: 1;
+  color: #ccc;
+  cursor: pointer;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.avaliacao-estrelas:hover .estrela { color: #f5b301; }
+.avaliacao-estrelas .estrela:hover ~ .estrela { color: #ccc; }
+.estrela:hover { transform: scale(1.15); }

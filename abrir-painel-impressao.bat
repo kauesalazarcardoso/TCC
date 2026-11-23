@@ -9,6 +9,7 @@ rem set "URL=https://SEU-SITE.netlify.app/html/estabelecimento.html"
 
 rem Perfil separado so pra essa janela, pra garantir que a flag de impressao
 rem direta sempre funcione, mesmo com outra janela do Chrome ja aberta.
+rem --autoplay-policy libera o som de pedido novo sem precisar clicar na pagina antes.
 set "PERFIL=%LOCALAPPDATA%\LoversAcai\ChromeImpressao"
 
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
@@ -24,4 +25,4 @@ if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
     exit /b 1
 )
 
-start "" "%CHROME%" --kiosk-printing --user-data-dir="%PERFIL%" --new-window "%URL%"
+start "" "%CHROME%" --kiosk-printing --autoplay-policy=no-user-gesture-required --user-data-dir="%PERFIL%" --new-window "%URL%"

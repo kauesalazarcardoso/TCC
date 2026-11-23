@@ -11,6 +11,7 @@ from routes.horario import horario_bp
 from routes.chatbot import chatbot_bp
 from routes.push import push_bp
 from routes.recomendacoes import recomendacoes_bp
+from routes.avaliacoes import avaliacoes_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -23,6 +24,7 @@ app.register_blueprint(horario_bp)
 app.register_blueprint(chatbot_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(recomendacoes_bp)
+app.register_blueprint(avaliacoes_bp)
 init_db()
 
 

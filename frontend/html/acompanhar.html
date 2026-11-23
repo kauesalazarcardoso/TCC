@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Acompanhar Pedido — Lovers Açaí</title>
-  <link rel="stylesheet" href="/css/acompanhar.css">
+  <link rel="stylesheet" href="/css/acompanhar.css?v=2">
 </head>
 <body>
   <header class="header">
@@ -14,8 +14,20 @@
   <div class="container">
     <div id="conteudo"></div>
   </div>
+
+  <div class="avaliacao-box" id="avaliacao-box" role="dialog" aria-labelledby="avaliacao-titulo" hidden>
+    <button type="button" class="avaliacao-fechar" id="avaliacao-fechar" aria-label="Fechar">×</button>
+    <p class="avaliacao-titulo" id="avaliacao-titulo">Se você usou as recomendações de complementos, qual nota você daria?</p>
+    <div class="avaliacao-estrelas" id="avaliacao-estrelas">
+      <button type="button" class="estrela" data-nota="1" aria-label="1 estrela">★</button>
+      <button type="button" class="estrela" data-nota="2" aria-label="2 estrelas">★</button>
+      <button type="button" class="estrela" data-nota="3" aria-label="3 estrelas">★</button>
+      <button type="button" class="estrela" data-nota="4" aria-label="4 estrelas">★</button>
+      <button type="button" class="estrela" data-nota="5" aria-label="5 estrelas">★</button>
+    </div>
+  </div>
   <script src="/js/config.js"></script>
-  <script src="/js/acompanhar.js?v=7"></script>
+  <script src="/js/acompanhar.js?v=8"></script>
 </body>
 </html>
 

@@ -34,6 +34,7 @@ TEST_DATABASE_URL = os.environ.get(
 _TABELAS = (
     "pedidos", "cardapio", "complementos", "bairros",
     "usuarios", "sessoes", "horarios", "chat_sessoes",
+    "avaliacoes_recomendacao", "push_subscriptions",
 )
 
 
